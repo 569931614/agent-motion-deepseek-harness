@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "coordinateSystem": "top-left-normalized",
+  "language": "zh-CN",
+  "styles": [
+    {
+      "id": "technology",
+      "name": "科技感",
+      "aliases": ["科技感", "科技", "科技风", "技术风", "technology", "tech"],
+      "palette": {"background": "#071322", "surface": "#10263B", "text": "#F2F8FC", "muted": "#8EAFBE", "accent": "#62E7D0", "accentSecondary": "#5598F5"},
+      "typography": {"titleFont": "Noto Sans SC", "titleFallbackFont": "Noto Sans SC", "bodyFont": "Noto Sans SC", "numberFont": "Bebas Neue", "titleFontPath": "reference-library/typography/fonts/notosanssc/NotoSansSC[wght].ttf", "bodyFontPath": "reference-library/typography/fonts/notosanssc/NotoSansSC[wght].ttf"},
+      "layout": {"person": {"x": 0.665, "y": 0.17, "width": 0.27, "height": 0.66}, "title": {"x": 0.065, "y": 0.19, "width": 0.52}, "subtitle": {"x": 0.05, "y": 0.88, "width": 0.9}},
+      "motion": {"durationSeconds": 0.65, "easing": "cubic-out", "entrance": "depth-reveal", "staggerSeconds": 0.08},
+      "design": {"backgroundKind": "perspective-grid", "personFrame": "angular", "titleTreatment": "bold-geometric", "diagramKind": "connected-flow", "personOutline": "background-dependent", "depth": "人物悬浮在信息流后侧，标题与流程节点在前景；冷色背光和偏移投影分离层次。", "reframe": "按人像视觉中轴重新取景，保持完整头部与颈肩，不随窗口非等比拉伸。"},
+      "content": {"eyebrow": "技术解读", "title": "让信息流动\n让表达清晰", "chapter": "第一章", "steps": ["素材", "编排", "交付"], "subtitle": "把复杂流程，变成清楚的三个步骤。"}
+    },
+    {
+      "id": "education",
+      "name": "教育风",
+      "aliases": ["教育风", "教育", "教学", "知识讲解", "课堂", "education", "educational"],
+      "palette": {"background": "#F3EFE2", "surface": "#FFFDF6", "text": "#203B40", "muted": "#667B70", "accent": "#23775C", "accentSecondary": "#EDBE4E"},
+      "typography": {"titleFont": "Huninn", "titleFallbackFont": "Noto Sans SC", "bodyFont": "Noto Sans SC", "numberFont": "Bebas Neue", "titleFontPath": "reference-library/typography/fonts/huninn/jf-openhuninn-2.1.ttf", "bodyFontPath": "reference-library/typography/fonts/notosanssc/NotoSansSC[wght].ttf"},
+      "layout": {"person": {"x": 0.065, "y": 0.21, "width": 0.24, "height": 0.59}, "title": {"x": 0.37, "y": 0.2, "width": 0.55}, "subtitle": {"x": 0.33, "y": 0.88, "width": 0.62}},
+      "motion": {"durationSeconds": 0.8, "easing": "sine-in-out", "entrance": "step-build", "staggerSeconds": 0.14},
+      "design": {"backgroundKind": "paper-rules", "personFrame": "rounded-portrait", "titleTreatment": "rounded-highlight", "diagramKind": "numbered-steps", "personOutline": "background-dependent", "depth": "左侧讲解者作为连续锚点，右侧知识卡沿纸面层级展开；轻投影与遮挡区分学习顺序。", "reframe": "竖向小窗以内的人脸中轴居中，留出头顶与必要手势空间。"},
+      "content": {"eyebrow": "知识讲解", "title": "把复杂知识\n讲得明明白白", "chapter": "第二章", "steps": ["先理解概念", "再看真实示例", "最后动手练习"], "subtitle": "先理解，再举例，最后亲手试一次。"}
+    },
+    {
+      "id": "marketing",
+      "name": "营销风",
+      "aliases": ["营销风", "营销", "品牌", "产品推广", "商业", "marketing", "sales"],
+      "palette": {"background": "#E34232", "surface": "#FFF4DC", "text": "#FFF4DC", "muted": "#FFD8BE", "accent": "#F2EB59", "accentSecondary": "#461E1A"},
+      "typography": {"titleFont": "Smiley Sans", "titleFallbackFont": "Noto Sans SC", "bodyFont": "Noto Sans SC", "numberFont": "Bebas Neue", "titleFontPath": "reference-library/typography/fonts/smileysans/SmileySans-Oblique.ttf", "bodyFontPath": "reference-library/typography/fonts/notosanssc/NotoSansSC[wght].ttf"},
+      "layout": {"person": {"x": 0.62, "y": 0.12, "width": 0.33, "height": 0.78}, "title": {"x": 0.065, "y": 0.21, "width": 0.51}, "subtitle": {"x": 0.04, "y": 0.89, "width": 0.92}},
+      "motion": {"durationSeconds": 0.38, "easing": "cubic-out", "entrance": "headline-punch", "staggerSeconds": 0.055},
+      "design": {"backgroundKind": "radial-poster", "personFrame": "cutout-stage", "titleTreatment": "oblique-poster", "diagramKind": "value-stack", "personOutline": "background-dependent", "depth": "讲解者与大标题占前景，放射圆盘居后；强偏移投影、标题遮挡与亮色行动条形成海报空间。", "reframe": "大人物层保留头肩及自然手势，宽轮廓只在已替换背景时显示。"},
+      "content": {"eyebrow": "品牌表达", "title": "把好产品\n讲到人心里", "chapter": "第三章", "steps": ["讲清价值", "建立信任", "促成行动"], "subtitle": "让每一句表达，都回到用户的真实需要。"}
+    }
+  ]
+}

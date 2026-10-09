@@ -39,3 +39,42 @@ test('untrusted transport and missing digest are rejected before fetch', async (
   await assert.rejects(downloadVerified({ ...asset, url: 'http://example.invalid/model' }, 'unused'), /HTTPS/);
   await assert.rejects(downloadVerified({ ...asset, sha256: '' }, 'unused'), /SHA-256/);
 });
+test('Windows network fallback uses a unique temporary file and still verifies bytes', async t => {
+  const folder = await mkdtemp(path.join(tmpdir(), 'download fallback 空格 '));
+  t.after(() => rm(folder, { recursive: true, force: true }));
+  const filename = path.join(folder, 'model');
+  await writeFile(filename, 'previous cache');
+  t.mock.method(globalThis, 'fetch', async () => new Response(new ReadableStream({ start(controller) {
+    controller.enqueue(payload.subarray(0, 3));
+    setTimeout(() => controller.error(new TypeError('terminated')), 10);
+  } })));
+  const windowsDownload = t.mock.fn(async (url, temporary) => {
+    assert.equal(url, asset.url);
+    assert.ok(temporary.startsWith(filename + '.') && temporary.endsWith('.part'));
+    assert.deepEqual(await readdir(folder), ['model'], 'The partial Node download must be removed before fallback.');
+    await writeFile(temporary, payload, { flag: 'wx' });
+  });
+  await downloadVerified(asset, filename, { platform: 'win32', windowsDownload });
+  assert.equal(windowsDownload.mock.callCount(), 1);
+  assert.deepEqual(await readFile(filename), payload);
+  assert.deepEqual(await readdir(folder), ['model']);
+
+  await writeFile(filename, 'previous cache');
+  await assert.rejects(downloadVerified(asset, filename, { platform: 'win32', windowsDownload: async (_, temporary) => writeFile(temporary, Buffer.alloc(payload.length)) }), /checksum/);
+  assert.equal(await readFile(filename, 'utf8'), 'previous cache');
+  assert.deepEqual(await readdir(folder), ['model']);
+});
+test('HTTP, checksum and non-Windows failures never invoke Windows fallback', async t => {
+  const folder = await mkdtemp(path.join(tmpdir(), 'download fallback '));
+  t.after(() => rm(folder, { recursive: true, force: true }));
+  const filename = path.join(folder, 'model');
+  const windowsDownload = t.mock.fn(() => { throw new Error('fallback must not run'); });
+  const fetch = t.mock.method(globalThis, 'fetch', async () => new Response('', { status: 403 }));
+  await assert.rejects(downloadVerified(asset, filename, { platform: 'win32', windowsDownload }), /HTTP 403/);
+  fetch.mock.mockImplementation(async () => new Response(Buffer.alloc(payload.length)));
+  await assert.rejects(downloadVerified(asset, filename, { platform: 'win32', windowsDownload }), /checksum/);
+  fetch.mock.mockImplementation(async () => { throw new DOMException('connection timed out', 'TimeoutError'); });
+  await assert.rejects(downloadVerified(asset, filename, { platform: 'linux', windowsDownload }), /timed out/);
+  assert.equal(windowsDownload.mock.callCount(), 0);
+  assert.deepEqual(await readdir(folder), []);
+});

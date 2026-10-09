@@ -21,6 +21,7 @@ jobs:
           node-version: ${{ matrix.node }}
           cache: npm
       - run: npm ci
+      - run: npm run build
       - name: Install Chromium system libraries (Linux)
         if: runner.os == 'Linux'
         run: node node_modules/playwright-core/cli.js install-deps chromium
@@ -29,5 +30,6 @@ jobs:
         env:
           AGENT_MOTION_FORCE_MANAGED_MEDIA: '1'
       - run: npm test
+      - run: npm run test:plugin
       - run: npm run package:check
       - run: npm run smoke

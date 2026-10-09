@@ -1,8 +1,26 @@
 {
   "name": "agent-motion",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "private": true,
   "type": "module",
+  "description": "Agent-driven Three.js video production and native DeepSeek Harness skills bundle.",
+  "main": "./deepseek/lib/index.js",
+  "exports": {
+    ".": "./deepseek/lib/index.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "files": [
+    "deepseek/", "templates/", "cordis.patch.yml", ".agents/", "scripts/", "tests/", "serve.mjs",
+    "reference-library/typography/", "reference-library/analysis/",
+    "AGENTS.md", "NOTICE", "COMMERCIAL-LICENSE.md", "THIRD_PARTY_NOTICES.md", ".gitignore",
+    "inputs/README.md", "docs/getting-started.md", "docs/compatibility.md", "docs/deepseek-harness.md",
+    "docs/deployment.md", "docs/user-manual.md", "docs/image-generation.md", "npm-shrinkwrap.json"
+  ],
   "scripts": {
     "serve": "node serve.mjs",
     "setup": "node scripts/setup.mjs",
@@ -14,11 +32,28 @@
     "package:release": "node scripts/package-release.mjs",
     "onboard": "node scripts/bootstrap.mjs",
     "matte": "node scripts/matte.mjs",
-    "matting:smoke": "node scripts/matting-smoke.mjs"
+    "matting:smoke": "node scripts/matting-smoke.mjs",
+    "test:plugin": "node --test deepseek/plugin.test.mjs deepseek/pipeline.test.mjs deepseek/image.test.mjs",
+    "build": "tsc -p deepseek/tsconfig.json",
+    "prepack": "npm run build",
+    "produce": "node deepseek/lib/produce.js",
+    "image": "node deepseek/lib/image.js"
   },
   "dependencies": {
     "three": "0.186.0",
-    "playwright-core": "1.63.0"
+    "playwright-core": "1.63.0",
+    "opencc-js": "1.4.2"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "~4.0.4",
+    "@deepseek-ai/dsh-skill-filesystem": "0.2.0-rc.2"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "~4.0.4",
+    "@deepseek-ai/dsh-skill": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-skill-filesystem": "0.2.0-rc.2",
+    "typescript": "5.9.3",
+    "@types/node": "22.19.1"
   },
   "engines": {
     "node": ">=22"

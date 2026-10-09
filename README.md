@@ -1,5 +1,9 @@
 # Agent Motion
 
+Native DeepSeek Harness plugin: install this bundle to discover the `agent-motion`, `motion-craft`, and `srt-reference-to-three` skills. See [installation and usage](docs/deepseek-harness.md).
+
+Adapted from [erduo1998-cell/agent-motion](https://github.com/erduo1998-cell/agent-motion). The original license and author attribution are retained.
+
 **Turn talking-head footage into a designed film with a coding agent.** Recording + complete SRT + brief → MP4 + editable Three.js project.
 
 [Demos](#demos) · [Get started](#start) · [How it works](#workflow) · [Compatibility](#compatibility)

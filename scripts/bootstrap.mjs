@@ -1,8 +1,9 @@
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, writeFileSync, chmodSync, copyFileSync, mkdtempSync, rmSync, realpathSync, lstatSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, chmodSync, copyFileSync, mkdtempSync, rmSync, realpathSync, lstatSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { downloadVerified } from './download.mjs';
 
 export const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 export const UV_VERSION = '0.12.17';
@@ -112,11 +113,7 @@ export async function ensureUv(projectRoot, env = privateEnvironment(projectRoot
     catch (error) { throw new Error(`${error.message}\n请删除这个损坏的 uv 缓存文件后重试：${archive}`); }
   } else {
     console.log(`下载官方 uv：${asset.url}`);
-    const response = await fetch(asset.url, { signal: AbortSignal.timeout(180000) });
-    if (!response.ok) throw new Error(`uv 下载失败：HTTP ${response.status}。请检查 GitHub 网络连接后重试。`);
-    const bytes = Buffer.from(await response.arrayBuffer());
-    verifyDigest(bytes, asset.sha256, asset.name);
-    writeFileSync(archive, bytes, { flag: 'wx' });
+    await downloadVerified(asset, archive, { env });
   }
   // Re-extract the verified archive, rather than trusting a stale executable cache.
   const unpacked = mkdtempSync(path.join(downloads, 'uv-unpack-'));

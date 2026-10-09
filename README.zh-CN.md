@@ -1,5 +1,9 @@
 # Agent Motion
 
+DeepSeek Harness 原生 Cordis 插件：自带 `agent-motion`、`motion-craft`、`srt-reference-to-three` 三个技能，支持科技感、教育风和营销风模板，以及可选的豆包生图。见 [插件安装与使用](docs/deepseek-harness.md)。
+
+基于 [erduo1998-cell/agent-motion](https://github.com/erduo1998-cell/agent-motion) 改造，保留原项目许可与作者署名。
+
 **让智能体，把口播做成动效视频。** 原片 + 完整 SRT + 制作要求 → MP4 + 可编辑 Three.js 工程。
 
 [看效果](#demos) · [开始使用](#start) · [制作方法](#workflow) · [兼容性](#compatibility)
@@ -49,6 +53,8 @@
 <a id="start"></a>
 
 ## 开始使用
+
+**DeepSeek Harness 用户**：本仓库也提供原生插件，安装后可发现 `agent-motion`、`motion-craft` 和 `srt-reference-to-three` 三个 Skill。[插件安装与使用](docs/deepseek-harness.md)
 
 **1. 下载，启动安装**
 

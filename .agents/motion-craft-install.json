@@ -52,7 +52,7 @@
     "motion-craft/scripts/frame-math.mjs": "0c01509b59e81513829c80ac76596d9b61350d25c241e3cd7fbafcfd97378556",
     "motion-craft/scripts/handoff-math.mjs": "5c0e778b966679eeee08309d1e65bd19a18bfd7de3138b07f40c856cabcf7f01",
     "motion-craft/scripts/project-bounds.mjs": "63355b1d54ba39feea84c199b84e65106ba953cbbd2d0357c0e2497cf49661bc",
-    "motion-craft/scripts/read-stage.py": "223c30c3ba0b53d2f01a36b5e16d5904c0d8971ea614bbc79dfecc779a30e136",
+    "motion-craft/scripts/read-stage.py": "4374ccb710b766d9d838647ceaed69cb32443104134ff80009848bdf0a49419d",
     "motion-craft/scripts/test-frame-math.mjs": "963f739d686d41924bbc904f726b9a74f7e2f663aa69a85392e3aaa37f407492",
     "motion-craft/scripts/test-handoff-math.mjs": "c28a7590524795bdd3fe9a851d831191c3582e159d007c2d4378641eae413e7c",
     "motion-craft/scripts/three-frame.mjs": "08deab4997a37899a632f917e9cbaa9d7b851678a526afe4087acd8501642aff",

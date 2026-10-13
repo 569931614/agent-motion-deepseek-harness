@@ -2,9 +2,13 @@
 
 Native DeepSeek Harness plugin: install this bundle to discover the `agent-motion`, `motion-craft`, and `srt-reference-to-three` skills. See [installation and usage](docs/deepseek-harness.md).
 
+Version 1.6.0 provides the DSH Web “动效工坊” sidebar workspace and `/agent-motion/`: upload a portrait MP4, enter narration/subtitle text, then choose a style and size. By default, the server clones the voice from the uploaded video for CosyVoice-v3.5-plus; an existing model-bound voice ID remains available as an alternative. It then generates narration and a MuseTalk talking-head video before running the original production skills. SRT imports use their text for narration and receive new timings. The page restores the chosen voice source and task settings, and displays audio/avatar previews, the finished MP4, a downloadable editable Three.js project ZIP and an HTML preview. New tasks use the latest production Skill requirements, layout and effects; existing tasks keep their rule snapshots. See [editing Skills](docs/user-manual.md#修改制作-skill).
+
+Video voice cloning uses up to the first 20 seconds and requires at least 5 seconds of clear speech from one speaker. Trim leading silence before uploading; a silent video cannot provide a clone. Video voice mode automatically runs the production workspace bootstrap if FFmpeg or FFprobe is missing, and checks both tools before paid API calls. The first setup can take a while; preparing it in advance is recommended for deployment. Existing voice ID mode keeps the original skill installation steps. Each execution uses paid speech and avatar services, and video voice mode also calls voice cloning. Configure Beijing DashScope, MuseTalk and a private Tencent Cloud COS bucket in Harness Settings → 动效工坊; changes apply after saving and the production page updates automatically, without an environment file or restart. A default voice ID is optional. Saved secrets only show configured status; blank secret fields preserve existing values and explicit clear checkboxes remove them. Secrets stay on the server and are never written to browser storage or prompts. Environment variables remain available for CLI compatibility. COS uses the full name-APPID bucket name and Tencent Cloud SecretId / SecretKey, with an optional STS SessionToken. The default endpoint is https://cos.ap-beijing.myqcloud.com; the region is derived from it. Limit PutObject / GetObject permissions to the required private objects. Publicly reachable signed COS URLs, valid for three hours, let Alibaba voice cloning and the avatar service read source media while the bucket stays private. CosyVoice remains on Beijing DashScope. Stopping locally does not guarantee cancellation of upstream paid work, and uncertain submissions must be checked rather than resubmitted. [Configuration and validation scope](docs/deployment.md#服务端配音数字人与-cos-配置).
+
 Adapted from [erduo1998-cell/agent-motion](https://github.com/erduo1998-cell/agent-motion). The original license and author attribution are retained.
 
-**Turn talking-head footage into a designed film with a coding agent.** Recording + complete SRT + brief → MP4 + editable Three.js project.
+**Turn talking-head footage into a designed film with a coding agent.** The original local workflow remains available: recording + complete SRT + brief → MP4 + editable Three.js project. The Web workflow adds narration and avatar generation before this production pipeline.
 
 [Demos](#demos) · [Get started](#start) · [How it works](#workflow) · [Compatibility](#compatibility)
 
@@ -129,7 +133,7 @@ One continuous author develops the opening and hardest passage before expanding 
 - [Reference analysis library](reference-library/analysis/README.md) — 43 cases, 109 mechanism windows and five tutorial methods; text / JSON only, without reference footage, audio, frames or complete transcripts.
 - [Contributing](CONTRIBUTING.md) — how to make and verify changes.
 
-READMEs are available in five languages; canonical Skills are maintained in Chinese. Agents can work in your language. Check fonts, glyphs, line breaks and reading time for each film; automatic dubbing is not included.
+READMEs are available in five languages; canonical Skills are maintained in Chinese. Agents can work in your language. Check fonts, glyphs, line breaks and reading time for each film. The Web workflow generates Chinese narration from the submitted text; automatic translation is not included. Real paid API production is separate from local rendering and mock tests.
 
 ## License
 

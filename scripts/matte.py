@@ -13,8 +13,8 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
-import tempfile
 import time
+import uuid
 from fractions import Fraction
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -122,7 +122,8 @@ def run(args):
     states = [np.zeros((1, 1, 1, 1), dtype=np.float32) for _ in range(4)]
     ratio = min(1.0, 512.0 / max(width, height))
     output.parent.mkdir(parents=True, exist_ok=True)
-    temporary = Path(tempfile.mkdtemp(prefix='.matting-', dir=output.parent))
+    temporary = output.parent / f'.matting-{uuid.uuid4().hex}'
+    temporary.mkdir(mode=0o700)
     processes, logs = [], []
     frame_count, started = 0, time.monotonic()
     ffmpeg = os.environ.get('FFMPEG_PATH', 'ffmpeg')

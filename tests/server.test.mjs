@@ -17,6 +17,8 @@ test('static server: Unicode paths, media ranges, HEAD, malformed URLs and bound
   const { server, url } = await startServer({ root, port: 0 });
   try {
     const index = await fetch(url + '/film/'); assert.equal(index.status, 200); assert.match(await index.text(), /Film/);
+    assert.equal((await fetch(url + '/favicon.ico')).status, 204);
+    assert.equal((await fetch(url + '/missing-asset.png')).status, 404);
     const file = url + '/' + encodeURIComponent('片 段.mp4');
     let res = await fetch(file); assert.equal(res.status, 200); assert.equal(await res.text(), '0123456789');
     res = await fetch(file, { headers: { Range: 'bytes=2-5' } }); assert.equal(res.status, 206); assert.equal(await res.text(), '2345');

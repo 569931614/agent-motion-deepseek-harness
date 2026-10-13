@@ -1,11 +1,25 @@
 ---
 name: agent-motion
-description: 在 DeepSeek Harness 中用 Three.js 制作或修改动效视频、MG、真人口播包装；从原片、完整 SRT 和制作要求开始，准备独立工程并进入 Motion Craft 制作流程。
+description: 在 DeepSeek Harness 中制作数字人口播、Three.js 动效视频及真人口播包装；页面默认复刻视频音色或使用已有音色 ID，以文案生成配音与数字人，再进入原 Motion Craft 管线，也支持既有原片与 SRT。
 ---
 
 # Agent Motion · DeepSeek Harness
 
 本 Skill 是插件入口。制作规则以本项目的 Motion Craft 和 SRT 与参考驱动制作 Skill 为准；沿用宿主的文件、bash/pwsh、图片及浏览器能力。
+
+## 视频制作页面
+
+DSH Web 左侧“动效工坊”及 `/agent-motion/` 页面接受人物 MP4、配音与字幕文案、音色来源、风格和画幅。默认“使用视频音色”：从视频开头最多 20 秒提取至少 5 秒清晰单人说话音轨，按 [官方接口](https://help.aliyun.com/zh/model-studio/voice-clone-design-http-api) 在北京区域复刻绑定 `cosyvoice-v3.5-plus` 的音色；片头静音时先截取合适片段上传，无声视频无法复刻。也可选“使用已有音色 ID”，使用已绑定该模型的 ID。服务端随后生成配音，再使用 MuseTalk 生成数字人口播，之后创建实际 Harness 制作会话。视频模式缺 FFmpeg 或 FFprobe 时会自动在专用工程运行 bootstrap，媒体工具检查通过后才调用付费 API；首次可能耗时较长，部署建议预先准备。已有 ID 模式的后续环境沿用下文原 Skill 安装步骤。页面任务的当前工程已初始化；直接使用指令给出的独立任务路径，不重复创建工程，不重新调用云端付费生成服务。
+
+页面 SRT 输入只取正文作为配音文案，纯文本也同时用作配音和字幕。原片无需与新文案口播相同；原 SRT 时间不能沿用于新配音。页面会话先按指令调用 `node scripts/prepare-avatar.mjs`，将本任务云端 `avatar.mp4` 与 `voice.wav` 生成 `voiced-avatar.mp4`，强制以新配音作为后续成品音轨；不可依赖上游数字人视频的原音轨。随后对该视频和 `narration.txt` 运行 `node scripts/align-subtitles.mjs --video <voiced-avatar.mp4> --text <narration.txt> --output <新的对齐目录>`，使用新配音重新对齐字幕。完整参数和目标路径以本次会话给出的命令为准，不覆盖已有素材。
+
+CPU faster-whisper 首次使用下载模型，输出对齐目录中的 `source.srt` 与 `alignment.json`。以实际新配音核对时间与原文；内容明显不匹配、没有音轨或下载失败时停止并报告，不按时长均分、不擅自改写文案。将 `voiced-avatar.mp4` 与新 `source.srt` 交给原两个 Skill，先抠像再排版合成，保留新配音的完整声音与时间。页面折叠预览中的数字人视频是上游原产物，最终影片音轨则使用强制混入的新配音。
+
+用户在 Harness“设置 → 动效工坊”填写阿里百炼北京区域 DashScope API Key、MuseTalk API Key，以及腾讯云 COS Endpoint、完整 `name-APPID` Bucket、SecretId、SecretKey 和可选 STS SessionToken。COS Endpoint 默认 `https://cos.ap-beijing.myqcloud.com`，区域从地址推导，不增加区域字段；只授予所需私有素材对象的 `PutObject` / `GetObject` 权限。保存后立即生效，制作页自动更新配置状态，无需环境文件或重启。设置页只显示密钥是否已配置，留空保留、明确勾选“清除”才删除，保存后密钥输入清空。默认视频模式无需手填音色；可选默认音色 ID 只为已有 ID 模式提供预填值，不改变视频默认选项。凭据存于服务器，禁止读取、输出或复制进 prompt、浏览器存储、文案和工程交付文件；环境变量只保留 CLI 兼容，内部 `MOTION_OSS_*` 字段分别存储上述 COS 配置。云端素材存于腾讯云 COS 私有存储，以三小时有效且公网可访问的签名链接交给阿里音色复刻及数字人服务，存储桶保持私有；制作只使用已下载的本地资产。
+
+每次页面执行调用收费服务，视频模式还会调用音色复刻。本地停止不保证取消上游已创建的付费任务；提交不确定时查询已有任务，不重复提交音色复刻、配音或数字人生成。页面完成后验证真实 MP4 并显示成片和工程预览；构建、模拟测试或本地渲染成功不等于真实云端 API 与视听验收完成。
+
+原声素材 CLI 工作流仍可直接使用已有视频和 SRT，保留原录音与输入时间轴。此分支的纯文本必须对应原片口播，可运行 `node scripts/align-subtitles.mjs --video <原片> --text <字幕.txt> --output <新的对齐目录>`，目录父级须存在、目标须不存在。脚本基于识别词级时间匹配原文，不按时长均分、不用识别稿替换用户文案。原声 CLI 不自行调用配音或数字人服务。
 
 ## 准备独立工程
 
@@ -31,7 +45,7 @@ node scripts/bootstrap.mjs
 
 插件目录里的原始技能便于发现制作能力；实际执行以工程副本为准。工程在父 Git 仓库的子目录时，宿主可能只扫描父仓库技能，仍须通过文件工具完整读取上述工程本地文件。阶段正文按 `node scripts/read-stage.mjs` 分页读取，每次只输出一页，看到完整结束标记后再继续。
 
-真人口播必须先完成同步人物层与实际检查，保留原始口播顺序、声音和时间。按原规则完成素材、构图、连续动画、声音、复查，交付 MP4 与可编辑工程。
+真人或数字人口播必须先完成同步人物层与实际检查，保留当前制作输入的完整口播顺序、声音和时间：页面使用 `voiced-avatar.mp4` 的新配音；原声 CLI 使用原片录音。按原规则完成素材、构图、连续动画、声音、复查，交付 MP4 与可编辑工程。
 
 ## 三套中文模板与生产命令
 
@@ -67,7 +81,7 @@ node --env-file=.env deepseek/lib/image.js --prompt inputs/image-prompt.txt --ou
 
 ## 预览与检查
 
-在工程根执行 `npm run serve`，打开当前工程在 `work/<任务>/` 下的实际预览页面。本地抠像与渲染复用项目 Python、Playwright 和 FFmpeg，不依赖付费生成服务；可选背景生图另走上述接口。
+在工程根执行 `npm run serve`，打开当前工程在 `work/<任务>/` 下的实际预览页面。本地抠像与渲染复用项目 Python、Playwright 和 FFmpeg；重渲染复用已有配音、数字人与背景资产，不再次提交付费生成。
 
 检查图片和视频时先生成缩略图、低分辨率代表帧拼图或局部裁切；只有小字、脸部或细节无法判断时才打开对应原图。宿主的 `read_image` 需要支持图片输入的模型路由；交互浏览器使用已安装且可用的浏览器插件。缺少实际观看、连续动作或试听能力时，按原规则标明待检查预览与具体缺口，不能用测试通过或导出成功替代成片视听验收。
 

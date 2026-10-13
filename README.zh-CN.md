@@ -2,9 +2,13 @@
 
 DeepSeek Harness 原生 Cordis 插件：自带 `agent-motion`、`motion-craft`、`srt-reference-to-three` 三个技能，支持科技感、教育风和营销风模板，以及可选的豆包生图。见 [插件安装与使用](docs/deepseek-harness.md)。
 
+1.6.0 的 DSH Web 左侧“动效工坊”和 `/agent-motion/` 接受人物 MP4、配音与字幕文案、风格和尺寸。默认使用视频中声音复刻 CosyVoice-v3.5-plus 音色，也可切换“使用已有音色 ID”。服务端先生成配音，再经 MuseTalk 生成数字人口播，随后实际调用原制作 Skill 抠像、排版、合成与渲染。SRT 导入使用正文配音，时间按新配音重新对齐；页面恢复音色来源和任务参数，回显配音、数字人素材、MP4、可下载的可编辑 Three.js 工程 ZIP 及 HTML 预览。新任务的制作要求、排版和效果跟随最新制作 Skill，已有任务保留当时规则快照。[修改 Skill](docs/user-manual.md#修改制作-skill)
+
+视频音色模式自动提取视频开头最多 20 秒，须有至少 5 秒清晰单人说话音轨；片头静音时先截取合适片段上传，无声视频无法复刻音色。缺少 FFmpeg 或 FFprobe 时，视频模式会自动在制作工程运行 bootstrap，并检查两项工具后才调用付费 API；首次准备可能耗时较长，部署建议预先完成。已有 ID 模式沿用原 Skill 的安装步骤。每次执行会使用收费配音和数字人服务，视频音色模式还会调用音色复刻。在 Harness“设置 → 动效工坊”填写北京区域 DashScope、MuseTalk 与腾讯云 COS 私有存储，保存后立即生效，制作页自动更新配置状态，无需环境文件或重启。默认音色 ID 为可选；密钥仅显示配置状态，留空保留、勾选“清除”才删除，保存后输入清空。凭据存于服务器，不写入浏览器存储或 prompt；环境变量保留为 CLI 兼容。COS 使用完整 name-APPID Bucket 与腾讯云 SecretId / SecretKey，可选 STS SessionToken；Endpoint 默认 https://cos.ap-beijing.myqcloud.com，区域由地址推导。权限限定为所需私有素材对象的 PutObject / GetObject。素材通过三小时有效且公网可访问的 COS 签名链接交给阿里音色复刻及数字人服务，存储桶保持私有；CosyVoice 仍使用阿里百炼北京区域。本地停止不保证撤销上游收费任务，提交状态不确定时查询原任务，避免重复收费。[配置及验证范围](docs/deployment.md#服务端配音数字人与-cos-配置)
+
 基于 [erduo1998-cell/agent-motion](https://github.com/erduo1998-cell/agent-motion) 改造，保留原项目许可与作者署名。
 
-**让智能体，把口播做成动效视频。** 原片 + 完整 SRT + 制作要求 → MP4 + 可编辑 Three.js 工程。
+**让智能体，把口播做成动效视频。** 原本地工作流继续支持原片 + 完整 SRT + 制作要求 → MP4 + 可编辑 Three.js 工程；Web 页面先完成文案配音和数字人口播，再进入同一制作管线。
 
 [看效果](#demos) · [开始使用](#start) · [制作方法](#workflow) · [兼容性](#compatibility)
 
@@ -131,7 +135,7 @@ Doctor 检查抠像环境，Smoke 完成一次真实 Three.js → H.264 渲染�
 - [参考分析库](reference-library/analysis/README.md) — 43 个案例、109 个机制时间窗、5 组教程方法；只提供文字 / JSON，不包含借鉴原片、音频、抽帧或完整转写。
 - [参与维护](CONTRIBUTING.md) — 修改与验证方式。
 
-README 提供五种语言，正式 Skill 以中文维护。智能体可按你的语言工作；成片需核对字库、字形、分行与阅读时间，不含自动配音翻译。
+README 提供五种语言，正式 Skill 以中文维护。智能体可按你的语言工作；成片需核对字库、字形、分行与阅读时间。页面按提交文案生成中文配音，不自动翻译；本地渲染及模拟测试不代表真实收费 API 已完成生产验收。
 
 ## 使用许可
 

@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>动效工坊设置 · Agent Motion</title>
+  <link rel="stylesheet" href="/agent-motion/style.css">
+  <script type="module" src="/agent-motion/settings.js"></script>
+</head>
+<body>
+  <main class="settings-page">
+    <div class="intro"><div><p class="eyebrow">云服务配置</p><h1>动效工坊设置</h1></div><a id="returnStudioLink" class="quiet-link" href="/agent-motion/">返回制作页 ↗</a></div>
+    <p class="settings-intro">配置阿里百炼北京区域配音、MuseTalk 数字人与腾讯云 COS 私有存储。保存后立即生效，无需重启；保存和读取设置不会调用收费服务。</p>
+    <div id="settingsStatus" class="notice notice-config" role="status"><div><strong id="settingsStatusTitle">正在读取配置</strong><p id="settingsStatusMessage">密钥只显示是否已配置，不回显已有值。</p></div><button id="reloadSettings" class="secondary-button" type="button">重新读取</button></div>
+    <div id="settingsError" class="notice notice-error" role="alert" hidden><div><strong>操作未完成</strong><p id="settingsErrorMessage"></p></div></div>
+    <div id="settingsReadonly" class="notice notice-auth" hidden><div><strong>当前配置只读</strong><p>当前服务无法写入设置，请联系管理员检查配置文件权限。</p></div></div>
+    <form id="settingsForm" class="panel settings-form" autocomplete="off" novalidate>
+      <div class="panel-header"><h2>配音与数字人</h2><span class="panel-meta">北京区域</span></div>
+      <div class="settings">
+        <div class="setting-secret"><label for="DASHSCOPE_API_KEY">DashScope API Key <span id="configured-DASHSCOPE_API_KEY">尚未配置</span></label><input id="DASHSCOPE_API_KEY" name="DASHSCOPE_API_KEY" type="password" autocomplete="new-password" spellcheck="false" placeholder="填写新密钥；留空保留已有配置"><label class="clear-setting"><input id="clear-DASHSCOPE_API_KEY" type="checkbox">清除已保存的 DashScope 密钥</label></div>
+        <div class="setting-secret"><label for="YIDEVS_API_KEY">MuseTalk API Key <span id="configured-YIDEVS_API_KEY">尚未配置</span></label><input id="YIDEVS_API_KEY" name="YIDEVS_API_KEY" type="password" autocomplete="new-password" spellcheck="false" placeholder="填写新密钥；留空保留已有配置"><label class="clear-setting"><input id="clear-YIDEVS_API_KEY" type="checkbox">清除已保存的 MuseTalk 密钥</label></div>
+        <label for="COSYVOICE_VOICE_ID">默认音色 ID <span>可选</span></label><input id="COSYVOICE_VOICE_ID" name="COSYVOICE_VOICE_ID" type="text" autocomplete="off" spellcheck="false" placeholder="绑定 CosyVoice-v3.5-plus 的已有音色 ID"><p class="field-help">只预填制作页的“使用已有音色 ID”，默认视频复刻模式无需填写。</p>
+      </div>
+      <div class="panel-header"><h2>腾讯云 COS 私有素材存储</h2><span class="panel-meta">区域从地址识别</span></div>
+      <div class="settings">
+        <label for="MOTION_OSS_ENDPOINT">COS Endpoint</label><input id="MOTION_OSS_ENDPOINT" name="MOTION_OSS_ENDPOINT" type="url" autocomplete="off" spellcheck="false" value="https://cos.ap-beijing.myqcloud.com"><p class="field-help">填写存储桶所在区域的 COS 地址，区域由该地址自动识别，无需另填。</p>
+        <label for="MOTION_OSS_BUCKET">COS Bucket</label><input id="MOTION_OSS_BUCKET" name="MOTION_OSS_BUCKET" type="text" autocomplete="off" spellcheck="false" placeholder="完整存储桶名称：name-APPID，例如 motion-assets-1250000000"><p class="field-help">使用私有读写存储桶，授权素材对象的 PutObject / GetObject 权限；无需公开存储桶。</p>
+        <div class="setting-secret"><label for="MOTION_OSS_ACCESS_KEY_ID">COS SecretId <span id="configured-MOTION_OSS_ACCESS_KEY_ID">尚未配置</span></label><input id="MOTION_OSS_ACCESS_KEY_ID" name="MOTION_OSS_ACCESS_KEY_ID" type="password" autocomplete="new-password" spellcheck="false" placeholder="填写腾讯云 SecretId；留空保留已有配置"><label class="clear-setting"><input id="clear-MOTION_OSS_ACCESS_KEY_ID" type="checkbox">清除已保存的 COS SecretId</label></div>
+        <div class="setting-secret"><label for="MOTION_OSS_ACCESS_KEY_SECRET">COS SecretKey <span id="configured-MOTION_OSS_ACCESS_KEY_SECRET">尚未配置</span></label><input id="MOTION_OSS_ACCESS_KEY_SECRET" name="MOTION_OSS_ACCESS_KEY_SECRET" type="password" autocomplete="new-password" spellcheck="false" placeholder="填写腾讯云 SecretKey；留空保留已有配置"><label class="clear-setting"><input id="clear-MOTION_OSS_ACCESS_KEY_SECRET" type="checkbox">清除已保存的 COS SecretKey</label></div>
+        <div class="setting-secret"><label for="MOTION_OSS_SECURITY_TOKEN">COS SessionToken <span>可选 · <span id="configured-MOTION_OSS_SECURITY_TOKEN">尚未配置</span></span></label><input id="MOTION_OSS_SECURITY_TOKEN" name="MOTION_OSS_SECURITY_TOKEN" type="password" autocomplete="new-password" spellcheck="false" placeholder="腾讯云 STS 临时凭据使用；留空保留已有配置"><label class="clear-setting"><input id="clear-MOTION_OSS_SECURITY_TOKEN" type="checkbox">清除已保存的 COS SessionToken</label></div>
+      </div>
+      <div class="settings-actions"><p class="field-help">密钥留空会保留已有配置，勾选“清除”才删除。密钥保存于服务器，不写入浏览器存储；保存后输入框会清空。其他字段留空可清除该字段。</p><button id="saveSettings" class="primary-button" type="submit"><span id="saveSettingsLabel">保存设置</span><span aria-hidden="true">↗</span></button></div>
+    </form>
+  </main>
+</body>
+</html>

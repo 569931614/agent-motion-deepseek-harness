@@ -1,0 +1,107 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { createWorkspace } from './create-workspace.mjs';
+import { ensureRuleReader, snapshotRules } from './skill-rules.mjs';
+import { createHash } from 'node:crypto';
+
+const root = fileURLToPath(new URL('../', import.meta.url));
+test('old unchanged pagers upgrade with a backup while custom pagers and Markdown rules are preserved', async t => {
+  const parent = realpathSync(tmpdir());
+  const temporary = mkdtempSync(path.join(parent, 'agent-motion pager-'));
+  t.after(() => {
+    assert.equal(path.dirname(realpathSync(temporary)), parent);
+    rmSync(temporary, { recursive: true, force: true });
+  });
+  const workspace = createWorkspace(path.join(temporary, 'production'));
+  const pagerPath = '.agents/skills/motion-craft/scripts/read-stage.py';
+  const pager = path.join(workspace, pagerPath);
+  const manifestFile = path.join(workspace, '.agents/motion-craft-install.json');
+  const manifest = JSON.parse(readFileSync(manifestFile, 'utf8'));
+  const key = 'motion-craft/scripts/read-stage.py';
+  const oldPager = '# old installed pager without task rules support\n';
+  const oldHash = createHash('sha256').update(oldPager).digest('hex');
+  manifest.fileHashes[key] = oldHash;
+  writeFileSync(pager, oldPager);
+  writeFileSync(manifestFile, JSON.stringify(manifest));
+  const instruction = path.join(workspace, '.agents/skills/motion-craft/SKILL.md');
+  const editedRules = readFileSync(instruction, 'utf8') + '\n用户制作要求：大字海报和景深动效。\n';
+  writeFileSync(instruction, editedRules);
+  await ensureRuleReader(workspace, root);
+  assert.deepEqual(readFileSync(pager), readFileSync(path.join(root, pagerPath)));
+  assert.equal(readFileSync(`${pager}.pre-rules-upgrade-${oldHash}.bak`, 'utf8'), oldPager);
+  assert.equal(readFileSync(instruction, 'utf8'), editedRules);
+  const expected = structuredClone(manifest);
+  expected.fileHashes[key] = createHash('sha256').update(readFileSync(pager)).digest('hex');
+  assert.deepEqual(JSON.parse(readFileSync(manifestFile, 'utf8')), expected);
+  await ensureRuleReader(workspace, root);
+  writeFileSync(pager, '# user custom pager, preserve this file\n');
+  await assert.rejects(ensureRuleReader(workspace, root), /用户修改.*合并新版 --rules-root.*尚未提交收费任务/);
+  assert.equal(readFileSync(pager, 'utf8'), '# user custom pager, preserve this file\n');
+  assert.deepEqual(JSON.parse(readFileSync(manifestFile, 'utf8')), expected);
+});
+
+test('new jobs read edited production rules and earlier jobs retain full snapshots', async t => {
+  const parent = realpathSync(tmpdir());
+  const temporary = mkdtempSync(path.join(parent, 'agent-motion rules-'));
+  t.after(() => {
+    assert.equal(path.dirname(realpathSync(temporary)), parent);
+    rmSync(temporary, { recursive: true, force: true });
+  });
+  const workspace = createWorkspace(path.join(temporary, 'production'));
+  const first = path.join(workspace, 'inputs', 'first');
+  const second = path.join(workspace, 'inputs', 'second');
+  mkdirSync(first); mkdirSync(second);
+  const oldRules = path.join(first, 'rules');
+  const newRules = path.join(second, 'rules');
+  const before = await snapshotRules(workspace, root, oldRules);
+  const skill = '.agents/skills/motion-craft/SKILL.md';
+  const reference = '.agents/skills/motion-craft/references/production-foundations.md';
+  const oldInstruction = readFileSync(path.join(oldRules, skill), 'utf8');
+  const oldReference = readFileSync(path.join(oldRules, reference), 'utf8');
+  writeFileSync(path.join(workspace, skill), oldInstruction.replace('# Motion Craft', '# Motion Craft\n\n本次排版要求：标题使用黄色，人物窗口连续旋转。'));
+  writeFileSync(path.join(workspace, reference), oldReference + '\n本次动态效果使用景深变化。\n');
+  const after = await snapshotRules(workspace, root, newRules);
+  assert.notEqual(before, after);
+  assert.equal(readFileSync(path.join(oldRules, skill), 'utf8'), oldInstruction);
+  assert.equal(readFileSync(path.join(oldRules, reference), 'utf8'), oldReference);
+  assert.match(readFileSync(path.join(newRules, skill), 'utf8'), /标题使用黄色/);
+  assert.match(readFileSync(path.join(newRules, reference), 'utf8'), /景深变化/);
+  assert.equal(JSON.parse(readFileSync(path.join(newRules, 'revision.json'), 'utf8')).revision, after);
+  assert.equal(readFileSync(path.join(newRules, '.agents/skills/agent-motion/SKILL.md'), 'utf8'), readFileSync(path.join(root, '.agents/skills/agent-motion/SKILL.md'), 'utf8'));
+  const result = spawnSync(process.execPath, ['scripts/read-stage.mjs', '--rules-root', path.relative(workspace, newRules), '--stage', 'composition', '--kind', 'talking-head'], { cwd: workspace, encoding: 'utf8', windowsHide: true, timeout: 30000 });
+  assert.equal(result.status, 0, result.error?.message || result.stderr);
+  assert.ok(result.stdout.includes(path.join(newRules, '.agents')));
+  assert.match(result.stdout, /NEXT_READ node scripts\/read-stage\.mjs --rules-root/);
+  assert.equal(await snapshotRules(workspace, root, newRules), after, 'ready retry reuses its complete frozen rules');
+  const retryParent = path.join(workspace, 'inputs', 'retry');
+  mkdirSync(retryParent);
+  const retryRules = path.join(retryParent, 'rules');
+  const original = path.join(workspace, skill), held = `${original}.held`;
+  renameSync(original, held);
+  await assert.rejects(snapshotRules(workspace, root, retryRules), /Missing production skill/);
+  assert.ok(!existsSync(retryRules));
+  assert.deepEqual(readdirSync(retryParent), []);
+  renameSync(held, original);
+  assert.match(await snapshotRules(workspace, root, retryRules), /^[a-f0-9]{64}$/);
+  const linkedParent = path.join(workspace, 'inputs', 'linked');
+  mkdirSync(linkedParent);
+  const external = path.join(temporary, 'external-skills');
+  cpSync(path.join(workspace, '.agents/skills'), external, { recursive: true });
+  const actualSkills = path.join(workspace, '.agents/skills');
+  const heldSkills = path.join(workspace, '.agents/skills.held');
+  renameSync(actualSkills, heldSkills);
+  symlinkSync(external, actualSkills, process.platform === 'win32' ? 'junction' : 'dir');
+  try {
+    await assert.rejects(snapshotRules(workspace, root, path.join(linkedParent, 'rules')), /escape their source directory/);
+    assert.deepEqual(readdirSync(linkedParent), []);
+  } finally {
+    unlinkSync(actualSkills);
+    renameSync(heldSkills, actualSkills);
+  }
+  await assert.rejects(snapshotRules(workspace, root, path.join(temporary, 'outside')), /inside the production/);
+});

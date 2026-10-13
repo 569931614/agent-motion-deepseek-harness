@@ -16,11 +16,12 @@ SKILL = Path(__file__).resolve().parents[1]
 PROJECT = SKILL.parents[2]
 MANIFEST = SKILL / 'references/stage-reading.json'
 PAGE_CHARS = 2200
+RULES_ROOT = None
 
 
 def read_command(args):
     # The Node wrapper selects py/python/python3 and enforces UTF-8 on Windows.
-    command = ['node', 'scripts/read-stage.mjs', *args]
+    command = ['node', 'scripts/read-stage.mjs', *(['--rules-root', str(RULES_ROOT)] if RULES_ROOT else []), *args]
     if os.name == 'nt':
         # PowerShell: single quotes prevent interpolation; double embedded quotes.
         return ' '.join("'" + arg.replace("'", "''") + "'" if not re.fullmatch(r'[A-Za-z0-9_./=-]+', arg) else arg for arg in command)
@@ -110,6 +111,7 @@ def validate_manifest(manifest):
 
 
 def main():
+    global SKILL, MANIFEST, RULES_ROOT
     parser = argparse.ArgumentParser(description=__doc__)
     choices = parser.add_mutually_exclusive_group(required=True)
     choices.add_argument('--stage')
@@ -119,7 +121,14 @@ def main():
     parser.add_argument('--kind', choices=['talking-head', 'animation'], default='talking-head')
     parser.add_argument('--page', type=int, default=1)
     parser.add_argument('--expect', help='Source packet hash from the preceding page')
+    parser.add_argument('--rules-root', help='Task rule snapshot inside this production project')
     args = parser.parse_args()
+    if args.rules_root:
+        RULES_ROOT = Path(args.rules_root).resolve()
+        if not RULES_ROOT.is_relative_to(PROJECT):
+            raise ValueError('Rule snapshot must be inside this project')
+        SKILL = RULES_ROOT / '.agents/skills/motion-craft'
+        MANIFEST = SKILL / 'references/stage-reading.json'
     manifest = json.loads(MANIFEST.read_text(encoding='utf-8'))
     validate_manifest(manifest)
     if args.list:

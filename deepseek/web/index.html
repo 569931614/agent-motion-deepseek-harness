@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>视频制作工作台 · Agent Motion</title>
+  <link rel="stylesheet" href="/agent-motion/style.css">
+  <script type="module" src="/agent-motion/app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/agent-motion/" aria-label="视频制作工作台首页"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>动效工坊<small>Agent Motion / DeepSeek Harness</small></span></a>
+    <div class="header-tools"><span class="workspace-label"><i aria-hidden="true"></i>口播视频工作台</span><a class="quiet-link" href="/">返回 Harness<span aria-hidden="true"> ↗</span></a></div>
+  </header>
+  <main>
+    <div class="intro"><div><p class="eyebrow">从人物素材，到专业成片</p><h1>让内容有声，也有形。</h1></div><p class="intro-note">上传人像视频，填写希望人物说出的文案。<br>使用视频音色，生成口播与专业成片。</p></div>
+    <div id="errorBox" class="notice notice-error" role="alert" hidden><div><strong id="errorTitle">操作未完成</strong><p id="errorMessage"></p></div><button id="retryButton" class="secondary-button" type="button" hidden>重试</button></div>
+    <div id="authBox" class="notice notice-auth" hidden><div><strong>请先登录 DeepSeek Harness</strong><p>在首页完成登录，然后回到此页重试当前步骤。</p></div><a class="secondary-button" href="/" target="_blank" rel="noopener">打开登录页面 ↗</a></div>
+    <div id="configBox" class="notice notice-config" role="status"><div><strong id="configTitle">正在检查制作服务</strong><p id="configMessage">读取配置状态，不会提交配音或数字人任务。</p></div><div class="config-actions"><a id="openSettings" class="secondary-button" href="/agent-motion/settings.html">设置 → 动效工坊</a><button id="configRetryButton" class="secondary-button" type="button">重新检查配置</button></div></div>
+    <form id="productionForm" novalidate>
+      <div class="workspace-grid">
+        <section class="panel media-panel" aria-labelledby="mediaHeading">
+          <div class="panel-header"><h2 id="mediaHeading"><span class="section-number">01</span>原片素材</h2><span class="panel-meta">人像口播 · MP4</span></div>
+          <div id="dropZone" class="upload-zone">
+            <input id="videoInput" class="visually-hidden" type="file" accept="video/mp4,.mp4" aria-label="选择 MP4 人像视频">
+            <div id="videoEmpty" class="empty-media"><div class="media-symbol" aria-hidden="true"><svg viewBox="0 0 48 48"><rect x="5" y="10" width="38" height="28" rx="2"/><path d="M20 18l12 6-12 6Z"/><path d="M13 4v6m22-6v6M13 38v6m22-6v6"/></svg></div><strong>把人像视频拖到这里</strong><p>或从电脑选择原片，最大 1 GB</p><button id="chooseVideo" class="secondary-button" type="button">选择 MP4 文件 <span aria-hidden="true">＋</span></button></div>
+            <video id="sourceVideo" controls playsinline preload="metadata" aria-label="原片本地预览" hidden></video>
+            <span class="viewer-corner viewer-corner-left" aria-hidden="true"></span><span class="viewer-corner viewer-corner-right" aria-hidden="true"></span>
+          </div>
+          <div class="media-footer"><div class="file-meta"><span id="videoFilename">尚未选择视频</span><span id="videoDetails">素材留在本机，开始制作时上传</span></div><button id="changeVideo" class="text-button" type="button" hidden>更换原片</button></div>
+          <fieldset class="styles"><legend><span class="section-number">02</span>选择视觉风格</legend><div class="style-options">
+            <label class="style-option"><input type="radio" name="style" value="technology" checked><span class="style-art"><img src="/agent-motion/templates/technology.png" alt="深蓝网格、信息流与右侧人物的科技感模板" loading="lazy"></span><span class="style-caption"><b>科技感</b><small>技术解读 · 产品方案</small><i aria-hidden="true"></i></span></label>
+            <label class="style-option"><input type="radio" name="style" value="education"><span class="style-art"><img src="/agent-motion/templates/education.png" alt="暖色纸面、分步知识板与左侧人物的教育风模板" loading="lazy"></span><span class="style-caption"><b>教育风</b><small>课程讲解 · 知识分享</small><i aria-hidden="true"></i></span></label>
+            <label class="style-option"><input type="radio" name="style" value="marketing"><span class="style-art"><img src="/agent-motion/templates/marketing.png" alt="红色海报、大标题与前景人物的营销风模板" loading="lazy"></span><span class="style-caption"><b>营销风</b><small>品牌故事 · 价值表达</small><i aria-hidden="true"></i></span></label>
+          </div></fieldset>
+        </section>
+        <section class="panel script-panel" aria-labelledby="scriptHeading">
+          <div class="panel-header"><h2 id="scriptHeading"><span class="section-number">03</span>配音与字幕文案</h2><button id="importSubtitles" class="text-button" type="button"><span aria-hidden="true">↥</span> 导入文案</button><input id="subtitleInput" class="visually-hidden" type="file" accept=".srt,.txt,text/plain" aria-label="导入 UTF-8 字幕或文案"></div>
+          <label class="visually-hidden" for="subtitles">配音与字幕文案，可粘贴 SRT 或纯文本</label>
+          <textarea id="subtitles" name="subtitles" required maxlength="50000" spellcheck="false" placeholder="填写希望数字人说出的简体中文文案。&#10;这些文字也会成为成片字幕。&#10;&#10;例如：&#10;把复杂流程，变成清楚的三个步骤。&#10;&#10;也可粘贴 SRT，原时间轴将按新配音重新对齐。" aria-describedby="subtitleHelp"></textarea>
+          <div class="script-footer"><span id="subtitleHelp">SRT / 纯文本 · SRT 正文用于配音，时间重新对齐</span><span id="characterCount">0 字</span></div>
+          <div class="settings"><fieldset class="voice-source"><legend>人物音色</legend><div class="voice-options"><label><input type="radio" name="voiceSource" value="video" checked aria-describedby="videoVoiceHelp"><span>使用视频音色</span></label><label><input type="radio" name="voiceSource" value="existing"><span>使用已有音色 ID</span></label></div></fieldset><p id="videoVoiceHelp" class="field-help">使用视频中声音复刻音色，并调用云端生成。自动提取开头最多 20 秒，须有至少 5 秒清晰的单人说话音轨。片头静音时，请先截取合适的说话片段上传；无声视频无法复刻音色。</p><p id="createdVoiceNotice" class="field-help" hidden></p><div id="existingVoiceFields" class="existing-voice" hidden><label for="voice">音色 ID <span>必填</span></label><input id="voice" name="voice" type="text" disabled autocomplete="off" spellcheck="false" placeholder="填写绑定 CosyVoice-v3.5-plus 的音色 ID" aria-describedby="voiceHelp"><p id="voiceHelp" class="field-help">使用已创建、绑定指定模型的音色 ID；请勿填写系统音色名称。</p></div><label for="title">影片标题 <span>可选</span></label><input id="title" name="title" type="text" maxlength="36" placeholder="例如：三个步骤讲清产品价值" autocomplete="off"><label for="resolution">输出画幅</label><select id="resolution" name="resolution"><option value="1920x1080">横屏 · 1920 × 1080</option><option value="1080x1920">竖屏 · 1080 × 1920</option><option value="1080x1080">方形 · 1080 × 1080</option><option value="1280x720">横屏 · 1280 × 720</option></select></div>
+          <div class="make-action"><button id="submitButton" class="primary-button" type="submit"><span id="submitLabel">开始制作</span><span aria-hidden="true">↗</span></button><p id="formHint">复刻与配音、数字人口播、抠像、动效与成片输出</p><p class="billing-note">每次执行会调用收费配音与数字人服务；视频音色模式还会调用音色复刻服务。停止本地制作不保证撤销上游已创建的收费任务。</p></div>
+        </section>
+      </div>
+    </form>
+    <section class="task-panel" aria-labelledby="taskHeading">
+      <div class="task-heading"><div><p class="eyebrow">制作进程</p><h2 id="taskHeading">准备好，就开始。</h2></div><div class="task-actions"><span id="statusBadge" class="status-badge">等待素材</span><a id="sessionLink" class="text-button" target="_blank" rel="noopener" hidden>打开任务会话 ↗</a><button id="cancelButton" class="text-button danger" type="button" hidden>停止制作</button></div></div>
+      <section id="approvalPanel" class="approval-panel" aria-labelledby="approvalHeading" hidden><h3 id="approvalHeading">等待操作确认</h3><p class="approval-intro">请检查当前操作的说明与完整参数，确认后继续制作。</p><div id="approvalList" class="approval-list"></div></section>
+      <div class="task-grid"><div class="task-status"><p id="stageMessage" class="stage-message" aria-live="polite">制作任务会在这里显示实际进度。</p><div id="uploadProgressWrap" hidden><div class="progress-caption"><span>原片上传</span><span id="uploadPercent">0%</span></div><progress id="uploadProgress" max="100" value="0" aria-label="原片上传进度"></progress></div><div id="workingProgress" class="working-progress" hidden><span aria-hidden="true"></span><p>后台正在处理，页面可保持打开。</p></div><ol class="phase-track" aria-label="制作流程"><li data-phase="upload"><span>01</span>上传原片</li><li data-phase="clone"><span>02</span>复刻音色</li><li data-phase="voice"><span>03</span>生成配音</li><li data-phase="avatar"><span>04</span>数字人口播</li><li data-phase="subtitles"><span>05</span>字幕对齐</li><li data-phase="matte"><span>06</span>人像抠图</li><li data-phase="composition"><span>07</span>场景合成</li><li data-phase="export"><span>08</span>渲染输出</li></ol><details id="mediaDetails" class="intermediate-media" hidden><summary>查看配音与数字人素材</summary><div id="audioPreviewWrap" hidden><p>生成配音</p><audio id="audioPreview" controls preload="metadata" aria-label="生成配音预览"></audio></div><div id="avatarPreviewWrap" hidden><p>数字人口播</p><video id="avatarPreview" controls playsinline preload="metadata" aria-label="数字人口播预览"></video></div></details><details id="eventDetails" hidden><summary>查看任务记录 <span id="eventCount"></span></summary><ol id="eventList" class="event-list"></ol></details><p id="restoreNote" class="restore-note" hidden></p></div>
+        <div class="result-panel"><div id="resultEmpty" class="result-empty"><svg viewBox="0 0 36 36" aria-hidden="true"><rect x="4" y="7" width="28" height="22" rx="1"/><path d="M15 13l9 5-9 5Z"/></svg><p id="resultPlaceholder">成片将在这里出现</p><span>MP4 成片 · Three.js 工程 · HTML 预览</span></div><video id="resultVideo" controls playsinline preload="metadata" aria-label="制作结果视频" hidden></video><div id="resultLinks" class="result-links" hidden><a id="downloadLink" class="secondary-button" download hidden>下载 MP4 <span aria-hidden="true">↓</span></a><a id="projectLink" class="secondary-button" download hidden>下载 Three.js 工程 <span aria-hidden="true">↓</span></a><a id="previewLink" class="text-button" target="_blank" rel="noopener" hidden>打开 HTML 预览 ↗</a></div></div></div>
+    </section>
+    <footer class="page-footer"><span>Agent Motion · 专业口播视频制作</span><span>文案配音、数字人口播与简体中文字幕。</span></footer>
+  </main>
+</body>
+</html>

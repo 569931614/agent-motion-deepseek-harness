@@ -6,6 +6,7 @@ The custom Motion Craft Community License 1.0 at the repository root applies to 
 | --- | --- | --- |
 | Three.js | MIT; see `node_modules/three/LICENSE` after `npm ci` | Installed from the locked npm package |
 | Playwright Core | Apache-2.0; see `node_modules/playwright-core/LICENSE` and `NOTICE` | Installed from the locked npm package |
+| ws | MIT; see `node_modules/ws/LICENSE` | Authenticated CosyVoice WebSocket transport; installed from the locked npm package |
 | Chromium | Chromium and component notices | Downloaded separately by browser setup |
 | FFmpeg / FFprobe | Existing user build, or conda-forge FFmpeg 8.0.1 GPL variant; retain its license and dependency notices | Invoked as external programs. Missing tools are installed into `.runtime/media`; no binaries bundled in the source distribution |
 | uv / managed Python | uv upstream MIT / Apache-2.0 and the downloaded Python distribution's own notices | Pinned official uv download; private runtime in `.runtime/` and `.venv/` |

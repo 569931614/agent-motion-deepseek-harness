@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { root, runPython } from './runtime.mjs';
 import { mediaPath, mediaEnvironment } from './media-tools.mjs';
 
-const output = await mkdtemp(path.join(tmpdir(), 'agent-motion matting-'));
+const qa = path.join(root, '.runtime', 'qa');
+await mkdir(qa, { recursive: true });
+const output = await mkdtemp(path.join(qa, 'matting-'));
 try {
   // Alpha is numerical opacity, not display luminance: preserve the full 0..255 range.
   const levels = [0, 1, 16, 32, 64, 128, 235, 254, 255];

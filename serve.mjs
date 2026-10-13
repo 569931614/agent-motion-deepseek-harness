@@ -25,9 +25,9 @@ export function parseRange(value, size) {
 export async function startServer({ port = 8793, host = '127.0.0.1', root = projectRoot } = {}) {
   root = await realpath(root);
   const server = http.createServer(async (req, res) => {
+    let pathname;
     try {
       if (!['GET', 'HEAD'].includes(req.method)) { res.writeHead(405, { Allow: 'GET, HEAD' }).end(); return; }
-      let pathname;
       try { pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname); }
       catch { res.writeHead(400).end('Invalid URL'); return; }
       // Reject Windows path syntax even on POSIX, and keep dotfile credentials private.
@@ -58,6 +58,7 @@ export async function startServer({ port = 8793, host = '127.0.0.1', root = proj
       res.on('close', () => stream.destroy());
       stream.pipe(res);
     } catch (error) {
+      if (error.code === 'ENOENT' && pathname === '/favicon.ico') { res.writeHead(204).end(); return; }
       res.writeHead(['ENOENT', 'ENOTDIR'].includes(error.code) ? 404 : error.code === 'EACCES' ? 403 : 500).end('Local asset unavailable');
     }
   });

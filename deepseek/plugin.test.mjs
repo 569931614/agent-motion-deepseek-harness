@@ -70,11 +70,11 @@ test('independent workspace preserves inputs, production resources and relocated
   assert.ok(!existsSync(path.join(target, '.agents/skills/agent-motion')));
   const lock = JSON.parse(readFileSync(path.join(target, 'package-lock.json'), 'utf8'));
   const sourceLock = JSON.parse(readFileSync(path.join(root, 'npm-shrinkwrap.json'), 'utf8'));
-  assert.deepEqual(Object.keys(lock.packages).sort(), ['', 'node_modules/opencc-js', 'node_modules/playwright-core', 'node_modules/three']);
-  for (const dependency of ['opencc-js', 'playwright-core', 'three']) {
+  assert.deepEqual(Object.keys(lock.packages).sort(), ['', 'node_modules/opencc-js', 'node_modules/playwright-core', 'node_modules/three', 'node_modules/ws']);
+  for (const dependency of ['opencc-js', 'playwright-core', 'three', 'ws']) {
     assert.deepEqual(lock.packages[`node_modules/${dependency}`], sourceLock.packages[`node_modules/${dependency}`]);
   }
-  assert.deepEqual(manifest.dependencies, { three: '0.186.0', 'playwright-core': '1.63.0', 'opencc-js': '1.4.2' });
+  assert.deepEqual(manifest.dependencies, { three: '0.186.0', 'playwright-core': '1.63.0', 'opencc-js': '1.4.2', ws: '8.18.3' });
   for (const key of ['peerDependencies', 'devDependencies', 'dsh']) assert.equal(manifest[key], undefined);
   for (const key of ['peerDependencies', 'devDependencies']) assert.equal(lock.packages[''][key], undefined);
   assert.deepEqual(lock.packages[''].dependencies, manifest.dependencies);
@@ -112,4 +112,32 @@ test('independent workspace preserves inputs, production resources and relocated
     assert.match(result.stdout, marker);
   }
   for (const directory of ['.runtime', '.venv', 'node_modules']) assert.ok(!existsSync(path.join(target, directory)));
+});
+
+test('Harness skill paths and loaded bodies use the editable studio production rules', async t => {
+  const parent = realpathSync(tmpdir());
+  const temporary = mkdtempSync(path.join(parent, 'agent-motion live-rules-'));
+  const previousHome = process.env.DSH_HOME;
+  const ctx = new Context();
+  try {
+    process.env.DSH_HOME = temporary;
+    mkdirSync(path.join(temporary, 'agent-motion'));
+    const workspace = createWorkspace(path.join(temporary, 'agent-motion', 'production'));
+    await ctx.plugin(SkillRegistry);
+    await ctx.plugin(plugin);
+    for (const name of ['motion-craft', 'srt-reference-to-three']) {
+      const instruction = path.join(workspace, '.agents/skills', name, 'SKILL.md');
+      const skill = await ctx.skills.get(name);
+      assert.equal(skill.path, instruction);
+      assert.equal(skill.source, 'custom');
+      writeFileSync(instruction, readFileSync(instruction, 'utf8') + '\n制作效果按当前 Skill 修改生效。\n');
+      assert.match((await ctx.skills.get(name)).content, /制作效果按当前 Skill 修改生效/);
+    }
+  } finally {
+    await ctx.fiber.dispose();
+    if (previousHome === undefined) delete process.env.DSH_HOME;
+    else process.env.DSH_HOME = previousHome;
+    assert.equal(path.dirname(realpathSync(temporary)), parent);
+    rmSync(temporary, { recursive: true, force: true });
+  }
 });

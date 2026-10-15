@@ -2,7 +2,7 @@
 
 Agent Motion 1.6.0 是 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的原生 Cordis bundle。它提供 DSH Web 侧栏“动效工坊”、`/agent-motion/` 制作页，以及 `agent-motion`、`motion-craft`、`srt-reference-to-three` 三个 Skill。支持科技感、教育风或营销风，制作可编辑的 Three.js 口播影片。
 
-页面输入为人物 MP4、文案、音色来源、风格与画幅。默认复刻视频中声音，也可填写绑定 CosyVoice-v3.5-plus 的已有音色 ID；随后生成配音，再通过 MuseTalk 生成数字人口播。制作会话用 `scripts/prepare-avatar.mjs` 强制混入新配音，生成 `voiced-avatar.mp4` 并重新对齐字幕。之后按原 Skill 完成 CPU 人物抠像、简体中文排版、Three.js 合成、音频混合与 H.264 MP4 导出。SRT 导入使用正文配音，原时间轴不用于新成片。模板是制作起点，智能体继续按原始 Skill 完善构图、动作和视听检查。
+页面输入为人物 MP4、文案、音色来源、风格与画幅。默认复刻视频中声音，也可填写绑定 CosyVoice-v3.5-plus 的已有音色 ID；随后生成配音，再通过 MuseTalk 生成数字人口播。制作会话用 `scripts/prepare-avatar.mjs` 强制混入新配音，生成 `voiced-avatar.mp4` 并重新对齐字幕。得到新视频与可信 SRT 后，直接进入原版 SRT 全文分析 → Motion Craft 的素材、构图、动画、声音、复查阶段，自建 Three.js 场景与渲染入口，输出 H.264 MP4。SRT 导入使用正文配音，原时间轴不用于新成片。科技感、教育风、营销风仅提供审美参考，默认不先套固定模板；模板 CLI 仅在用户明确选择时使用。
 
 ## 安装到 DSH Web
 
@@ -33,7 +33,7 @@ npx @deepseek-ai/dsh@0.2.0-rc.2 web
 
 工坊监视实际 Harness home 下 `agent-motion/production/.agents/skills/` 的制作规则。修改其中的 `motion-craft`、`srt-reference-to-three` 及引用资料后，新任务的制作要求、排版、字体和效果随之变化，无需重启。`agent-motion` 入口默认来自安装包，可在生产工程的同名目录放置完整入口以覆盖。
 
-每个新任务首次执行时冻结本次规则，制作会话按快照完善模板初版，再渲染。执行中的任务、重试同一任务和旧视频保留原规则；需要应用新规则时新建任务。Skill 不负责修改上传表单或 API 配置。实际路径和修改方法见 [修改制作 Skill](user-manual.md#修改制作-skill)。
+每个新任务首次执行时冻结本次规则，制作会话按快照完成原版全文分析与各制作阶段，不用模板输出替代制作规则。执行中的任务、重试同一任务和旧视频保留原规则；需要应用新规则时新建任务。Skill 不负责修改上传表单或 API 配置。实际路径和修改方法见 [修改制作 Skill](user-manual.md#修改制作-skill)。
 
 ## 原声素材：用自然语言开始
 
@@ -41,7 +41,7 @@ npx @deepseek-ai/dsh@0.2.0-rc.2 web
 
 > 使用 agent-motion，在当前工作区新建 my-film 工程。输入是我提供的原视频和完整 SRT。风格：科技感；标题：让 AI 帮你完成重复工作；画幅：1920×1080，30 fps。先保存 brief、检查输入和准备同步人物层，再生成并改进 Three.js 影片。保留原口播顺序、声音和时间，交付 MP4、可编辑工程和实际检查记录。
 
-把“科技感”换成“教育风”或“营销风”即可。智能体先通过 [初始化脚本](../deepseek/create-workspace.mjs) 创建独立制作工程，再运行工程内安装器和生产 CLI。原视频、字幕及 brief 保存在工程 `inputs/`，各轮影片保存在 `work/<任务>/`。已有工程直接续作；不在插件安装目录制作或覆盖旧成片。
+把“科技感”换成“教育风”或“营销风”即可。智能体先通过 [初始化脚本](../deepseek/create-workspace.mjs) 创建独立制作工程，运行工程内安装器，然后按两个原版 Skill 制作；不要求模板生产 CLI。原视频、字幕及 brief 保存在工程 `inputs/`，各轮影片保存在 `work/<任务>/`。已有工程直接续作；不在插件安装目录制作或覆盖旧成片。
 
 此原声素材工作流直接使用已有录音与 SRT。英文字幕须先翻译为中文并保留时间轴，繁体字幕和标题转为简体；缺少 SRT 时可用对应录音的原文进行本地 CPU 对齐。页面则使用文案生成的新配音和新字幕时间，不需要文案对应原片口播。
 
@@ -49,7 +49,9 @@ npx @deepseek-ai/dsh@0.2.0-rc.2 web
 
 ## 插件实现与维护
 
-[TypeScript 入口](../deepseek/src/index.ts) 构建为 `deepseek/lib/index.js`，通过官方 `dsh-skill-filesystem` 子插件发现打包的三套 Skills，并在卸载时清理注册。Web 适配层注册制作页和任务接口，通过宿主会话控制器执行 Skill。激活层是 [cordis.patch.yml](../cordis.patch.yml)。文件、bash/pwsh、图片、浏览器及交付能力复用宿主；生产 CLI 和浏览器渲染使用工程自带工具链。
+[TypeScript 入口](../deepseek/src/index.ts) 构建为 `deepseek/lib/index.js`，通过官方 `dsh-skill-filesystem` 子插件发现打包的三套 Skills，并在卸载时清理注册。Web 适配层注册制作页和任务接口，通过宿主会话控制器执行 Skill。激活层是 [cordis.patch.yml](../cordis.patch.yml)。文件、bash/pwsh、图片、浏览器及交付能力复用宿主；浏览器渲染和可选模板 CLI 使用工程自带工具链。
+
+页面的交付适配只约定当前任务的 `final.mp4`、`index.html`、可编辑 Three.js 源码与任务自己的 `render.mjs`，保留 `source.mp4`、`source.srt`、`brief.txt` 以便归档；不规定场景 schema，也不要求 `film.json` 或 `validation.json`。目录边界、凭据隔离和成片媒体检查继续由插件处理，版式、动作和声音制作遵循原版 Skill。
 
 ```sh
 npm ci
@@ -62,6 +64,6 @@ npm pack
 
 `npm pack` 的 `prepack` 会构建 TypeScript。发布包包含编译输出，消费者安装时不运行 `prepare`；GitHub 分发也必须包含当前 `deepseek/lib/`。插件测试验证真实 Cordis 技能加载、完整正文、资源路径、卸载及独立工程，管线测试另验证输入和产物。升级 Harness 前重跑适配检查；渲染与环境检查不能替代视听验收。
 
-检查图像和视频帧先用缩略图、低分辨率拼图或局部裁切，必要时才看原图。缺少图片输入路由、连续观看或试听能力时，交付记录应保留待检查项；详见 [使用手册的验收步骤](user-manual.md#验收与归档)。
+检查图像和视频帧先用缩略图、低分辨率拼图或局部裁切，必要时才看原图。制作会话在构图前用本任务真实帧试读图片；`read_image` 要求当前模型路由明确声明图片输入，仅安装工具不够。失败时仍可生成明确待检查的预览；如需模型查看图片，请在宿主现有模型设置中选择支持图片的路由，再在原会话复用资产继续，插件不自动换模型或重调收费生成。工坊的“已导出”只确认媒体与工程检查，未成功读图时明确显示“待视觉检查”；一次图片成功也不证明整片动效、口型或声音通过验收。请正常速度观看并试听 MP4，对照工程 `review.md` 中的实际检查与缺口确认结果；详见 [使用手册的验收步骤](user-manual.md#验收与归档)。
 
 商业视频制作、客户服务或收费产品集成须取得作者事先书面授权；[项目许可](../LICENSE)、[商业授权说明](../COMMERCIAL-LICENSE.md) 和 [第三方说明](../THIRD_PARTY_NOTICES.md) 分别约束对应材料。

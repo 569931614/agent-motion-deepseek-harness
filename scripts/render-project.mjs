@@ -80,7 +80,7 @@ export async function renderProject(directory) {
     if (!metadata.streams.some(stream => stream.codec_name === 'h264') || (film.hasAudio && !metadata.streams.some(stream => stream.codec_type === 'audio')) || Math.abs(Number(metadata.format.duration) - film.duration) > 1 / film.fps + 0.05) throw new Error('Output codec, audio or duration validation failed.');
     copyFileSync(pending, output, constants.COPYFILE_EXCL);
     unlinkSync(pending);
-    json(path.join(target, 'validation.json'), { video: metadata, fps: film.fps, frames: count, style: film.style.name, subtitleLanguage: 'zh-CN', originalSpeechAudio: film.hasAudio, status: 'rendered-awaiting-audiovisual-review', scope: '编码、字幕时序和音轨检查通过；人物边缘、完整连续动作及声音仍需实际复查。' });
+    json(path.join(target, 'validation.json'), { video: metadata, fps: film.fps, frames: count, style: film.style?.name, subtitleLanguage: 'zh-CN', originalSpeechAudio: film.hasAudio, status: 'rendered-awaiting-audiovisual-review', scope: '编码、字幕时序和音轨检查通过；人物边缘、完整连续动作及声音仍需实际复查。' });
     console.log(`输出：${output}\n预览与可编辑工程：${path.join(target, 'index.html')}`);
   } finally {
     await browser?.close();

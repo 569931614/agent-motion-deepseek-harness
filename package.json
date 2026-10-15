@@ -61,7 +61,7 @@
     "onboard": "node scripts/bootstrap.mjs",
     "matte": "node scripts/matte.mjs",
     "matting:smoke": "node scripts/matting-smoke.mjs",
-    "test:plugin": "node --test deepseek/plugin.test.mjs deepseek/pipeline.test.mjs deepseek/image.test.mjs deepseek/web.test.mjs deepseek/client.test.mjs deepseek/voice.test.mjs deepseek/avatar.test.mjs deepseek/clone.test.mjs deepseek/rules.test.mjs deepseek/project.test.mjs",
+    "test:plugin": "node --test deepseek/plugin.test.mjs deepseek/pipeline.test.mjs deepseek/image.test.mjs deepseek/web.test.mjs deepseek/client.test.mjs deepseek/voice.test.mjs deepseek/avatar.test.mjs deepseek/clone.test.mjs deepseek/rules.test.mjs deepseek/project.test.mjs deepseek/login.test.mjs",
     "build": "tsc -p deepseek/tsconfig.json",
     "prepack": "npm run build",
     "produce": "node deepseek/lib/produce.js",

@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>登录 · 动效工坊</title>
+<style>
+  :root{color-scheme:dark;font-family:system-ui,"Microsoft YaHei",sans-serif;background:#131615;color:#f0eee6}body{max-width:520px;margin:14vh auto;padding:28px}h1{font-size:26px}p{line-height:1.8;color:#b5beb5}label{display:block;margin:28px 0 10px}input,button{font:inherit;box-sizing:border-box;border-radius:5px;padding:13px}input{width:100%;border:1px solid #59645a;background:#1a1e1c;color:inherit}button{margin-top:16px;border:0;background:#a2dfba;color:#152219;cursor:pointer}button:disabled{opacity:.5;cursor:wait}a{color:#a2dfba}input:focus-visible,button:focus-visible,a:focus-visible{outline:2px solid #a2dfba;outline-offset:3px}#statusText{min-height:54px}
+</style>
+<h1>登录动效工坊</h1>
+<p>先恢复本机登录状态，再进入 DeepSeek Harness。</p>
+<form id="loginForm">
+  <label for="tokenInput">当前启动链接或登录口令</label>
+  <input id="tokenInput" type="password" autocomplete="off" spellcheck="false" required aria-describedby="loginHelp">
+  <p id="loginHelp">使用本次 <code>dsh web</code> 启动时显示的完整链接。服务重启后，旧口令会失效。</p>
+  <button id="loginButton" type="submit">登录并打开项目</button>
+</form>
+<p id="statusText" role="status" aria-live="polite">正在检查已有登录状态…</p>
+<noscript><p>请启用 JavaScript 后重新打开此页。</p></noscript>
+<script type="module" src="/agent-motion/login.js"></script>
+</html>

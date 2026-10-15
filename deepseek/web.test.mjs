@@ -1,11 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { copyFileSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
+import { copyFileSync, cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, unlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { Studio as HostStudio, validateInput } from './lib/web.js';
+import { createServer } from 'node:http';
+import { Studio as HostStudio, validateInput, mountStudio } from './lib/web.js';
 import { mediaPath } from '../scripts/media-tools.mjs';
 import { createWorkspace } from './create-workspace.mjs';
 
@@ -16,6 +17,31 @@ video.writeUInt32BE(video.length, 0);
 video.write('ftyp', 4);
 video.write('isom', 8);
 const hasStatus = status => error => error.status === status;
+
+test('only the exact login page and script are public; studio, settings, assets and files keep Harness authentication', async () => {
+  let handler, authenticationChecks = 0;
+  const services = {
+    connection: { fetch: { register: () => () => {} }, authorizeIndex(req, res) { authenticationChecks++; res.writeHead(401).end('authentication required'); return false; } },
+    webServer: { register(route) { handler = route.handler; return () => {}; } }, sessionController: {},
+  };
+  mountStudio({ get: name => services[name], on() {}, effect: register => register() });
+  const server = createServer((req, res) => handler(req, res));
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  const origin = `http://127.0.0.1:${server.address().port}`;
+  try {
+    for (const route of ['/agent-motion/login', '/agent-motion/login.js']) {
+      const response = await fetch(origin + route);
+      assert.equal(response.status, 200);
+      assert.equal(response.headers.get('cache-control'), 'no-store');
+      assert.equal(response.headers.get('referrer-policy'), 'no-referrer');
+      assert.equal(response.headers.get('set-cookie'), null, 'The public page cannot mint a login cookie');
+    }
+    assert.equal(authenticationChecks, 0);
+    for (const route of ['/agent-motion/', '/agent-motion/settings.html', '/agent-motion/style.css', '/agent-motion/login/', '/agent-motion/login.html', '/agent-motion/files/task/final.mp4']) assert.equal((await fetch(origin + route)).status, 401);
+    assert.equal(authenticationChecks, 6);
+    assert.equal((await fetch(origin + '/agent-motion/login', { method: 'POST' })).status, 405);
+  } finally { await new Promise(resolve => server.close(resolve)); }
+});
 function deferred() {
   let resolve;
   const promise = new Promise(done => { resolve = done; });
@@ -183,7 +209,7 @@ test('settings reject invalid and read-only writes and hide storage errors', asy
   }
 });
 
-test('Web studio follows real Harness task, upload, cancellation and file contracts', { timeout: 60000 }, async t => {
+test('Web studio follows real Harness task, upload, cancellation and file contracts', { timeout: 120000 }, async t => {
   const key = process.env.DASHSCOPE_API_KEY; process.env.DASHSCOPE_API_KEY = 'test-only-key';
   t.after(() => { if (key === undefined) delete process.env.DASHSCOPE_API_KEY; else process.env.DASHSCOPE_API_KEY = key; });
   const temporaryParent = realpathSync(tmpdir());
@@ -335,7 +361,7 @@ test('Web studio follows real Harness task, upload, cancellation and file contra
     assert.equal(validateInput({ ...input, voiceSource: undefined, voice: undefined }).voiceSource, 'video');
     assert.equal(validateInput({ ...input, voiceSource: undefined }).voiceSource, 'existing');
     assert.equal(validateInput({ ...input, voice: 'cosyvoice-v3.5-plus.saved' }).voice, 'cosyvoice-v3.5-plus.saved');
-    for (const [width, height] of [[1920, 1080], [1080, 1920], [1080, 1080], [1280, 720]]) {
+    for (const [width, height] of [[1920, 1080], [1080, 1920], [1080, 1080], [1280, 720], [720, 1280]]) {
       assert.equal(validateInput({ ...input, width, height }).width, width);
     }
     const task = await studio.create({ ...input, subtitles: srt });
@@ -397,11 +423,16 @@ test('Web studio follows real Harness task, upload, cancellation and file contra
     const text = prompt.content.map(part => part.text).join('\n');
     for (const marker of ['skill 工具加载 agent-motion', 'motion-craft', 'srt-reference-to-three', 'align-subtitles.mjs',
       `inputs/studio/${task.id}`, `work/${task.id}`, '教育风', '1920×1080', 'CosyVoice-v3.5-plus', 'MuseTalk', 'prepare-avatar.mjs', 'voiced-avatar.mp4']) assert.ok(text.includes(marker), marker);
-    assert.ok(text.includes(`--srt inputs/studio/${task.id}/alignment/source.srt`));
+    assert.ok(text.includes(`inputs/studio/${task.id}/alignment/source.srt`));
     assert.match(task.ruleRevision, /^[a-f0-9]{64}$/);
     assert.ok(text.includes(`--rules-root inputs/studio/${task.id}/rules`));
-    assert.ok(text.includes('--preview-only'));
-    assert.ok(text.includes('实际制作要求、布局和效果必须落实当前 Skill 的修改'));
+    assert.ok(!text.includes('produce.js'));
+    assert.ok(!text.includes('--preview-only'));
+    assert.ok(text.includes('assets → composition → animation → sound → review'));
+    for (const marker of ['END_READING', '动画代码动笔前', '低分辨率真实帧', '实际调用 read_image', '连续样段', '一次图片读取成功也不等于', '不自行切换模型']) assert.ok(text.includes(marker), marker);
+    assert.ok(text.includes('依当前规则决定排版、人物位置、信息数量、动画和混音'));
+    assert.ok(text.indexOf('prepare-avatar.mjs') < text.indexOf('align-subtitles.mjs'));
+    assert.ok(text.indexOf('align-subtitles.mjs') < text.indexOf('srt-reference-to-three 完整分析'));
     assert.equal(JSON.parse(readFileSync(path.join(studio.workspace, 'inputs/studio', task.id, 'rules/revision.json'), 'utf8')).revision, task.ruleRevision);
     assert.equal(studio.publicTask(task).sessionUrl, '/');
     assert.equal(studio.publicTask(task).sessionTitle, `视频制作 · 教育风 · ${task.id.slice(0, 8)}`);
@@ -578,7 +609,7 @@ test('Web studio follows real Harness task, upload, cancellation and file contra
     await studio.cancel(task.id);
   });
 
-  await t.test('produce stays in matting until its composition artifact exists and never resets rendering on reads', async () => {
+  await t.test('template metadata does not advance original Skill phases or reset rendering on reads', async () => {
     const task = await ready(); await execute(task);
     const events = controller.sessions.get(task.sessionId).events;
     const call = (name, args) => events.push({ seq: events.length, type: 'tool/call', data: { name, callId: randomUUID(), arguments: JSON.stringify(args) } });
@@ -586,6 +617,8 @@ test('Web studio follows real Harness task, upload, cancellation and file contra
     assert.equal((await studio.status(task.id)).phase, 'matte');
     const output = path.join(studio.workspace, 'work', task.id); mkdirSync(output);
     writeFileSync(path.join(output, 'film.json'), '{}');
+    assert.equal((await studio.status(task.id)).phase, 'matte');
+    call('pwsh', { command: 'node scripts/read-stage.mjs --stage composition --kind talking-head' });
     assert.equal((await studio.status(task.id)).phase, 'composition');
     assert.equal(saved(task).phase, 'composition');
     call('pwsh', { command: `node work/${task.id}/render.mjs` });
@@ -676,7 +709,7 @@ test('Web studio follows real Harness task, upload, cancellation and file contra
     });
   }
 
-  await t.test('real H.264/AAC artifacts pass FFprobe while invalid duration and missing audio fail', async t => {
+  await t.test('original free-form and legacy projects pass FFprobe while truncated media or missing render entry fail', async t => {
     const ffmpeg = mediaPath('ffmpeg'), ffprobe = mediaPath('ffprobe');
     for (const command of [ffmpeg, ffprobe]) {
       if (spawnSync(command, ['-version'], { encoding: 'utf8', windowsHide: true, timeout: 5000 }).status !== 0) {
@@ -691,26 +724,142 @@ test('Web studio follows real Harness task, upload, cancellation and file contra
     const silent = spawnSync(ffmpeg, ['-hide_banner', '-loglevel', 'error', '-i', clip, '-map', '0:v:0', '-c:v', 'copy', '-an', silentClip],
       { encoding: 'utf8', windowsHide: true, timeout: 10000 });
     assert.equal(silent.status, 0, silent.error?.message || silent.stderr);
+    const voice = path.join(temporary, 'voice.wav'), longVoice = path.join(temporary, 'long-voice.wav');
+    for (const [filename, duration] of [[voice, '0.2'], [longVoice, '0.5']]) {
+      const audio = spawnSync(ffmpeg, ['-v', 'error', '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=48000', '-t', duration, filename], { encoding: 'utf8', windowsHide: true, timeout: 10000 });
+      assert.equal(audio.status, 0, audio.error?.message || audio.stderr);
+    }
+    const shortVideo = path.join(temporary, 'short-video.mp4'), shortAudio = path.join(temporary, 'short-audio.mp4');
+    for (const [filename, args] of [[shortVideo, ['-i', silentClip, '-i', longVoice, '-map', '0:v:0', '-map', '1:a:0', '-c:v', 'copy', '-c:a', 'aac']],
+      [shortAudio, ['-f', 'lavfi', '-i', 'color=c=black:s=1280x720:r=30:d=0.5', '-i', voice, '-map', '0:v:0', '-map', '1:a:0', '-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p', '-c:a', 'aac']]]) {
+      const result = spawnSync(ffmpeg, ['-v', 'error', ...args, filename], { encoding: 'utf8', windowsHide: true, timeout: 15000 });
+      assert.equal(result.status, 0, result.error?.message || result.stderr);
+    }
     const previousProbe = process.env.FFPROBE_PATH;
     process.env.FFPROBE_PATH = ffprobe;
     try {
-      for (const [source, duration, expected, hasAudio = true] of [[clip, 0.2, 'completed'], [clip, null, 'failed'], [silentClip, 0.2, 'failed'], [silentClip, 0.2, 'failed', false]]) {
+      for (const dependency of ['three', 'playwright-core', 'opencc-js']) cpSync(path.resolve(import.meta.dirname, '../node_modules', dependency), path.join(studio.workspace, 'node_modules', dependency), { recursive: true });
+      for (const [source, narration, expected, variant] of [[clip, voice, 'completed', 'free'], [clip, voice, 'completed', 'legacy'],
+        [clip, longVoice, 'failed', 'free'], [shortVideo, longVoice, 'failed', 'free'], [shortAudio, longVoice, 'failed', 'free'],
+        [silentClip, voice, 'failed', 'free'], [clip, voice, 'failed', 'no-render'], [clip, voice, 'failed', 'wrong-size'], [clip, voice, 'failed', 'no-scene']]) {
         const task = await ready({ ...input, width: 1280, height: 720 }); await execute(task);
+        copyFileSync(narration, path.join(studio.workspace, 'inputs/studio', task.id, 'voice.wav'));
         const output = path.join(studio.workspace, 'work', task.id); mkdirSync(output);
-        copyFileSync(source, path.join(output, 'final.mp4'));
         writeFileSync(path.join(output, 'index.html'), '<!doctype html><title>编码检查</title>');
-        writeFileSync(path.join(output, 'film.json'), JSON.stringify({ width: 1280, height: 720, duration, hasAudio }));
-        writeFileSync(path.join(output, 'validation.json'), '{}');
-        controller.sessions.get(task.sessionId).events = terminalEvents('completed', true);
+        if (variant !== 'no-scene') writeFileSync(path.join(output, 'main.mjs'), "import {Scene} from 'three';export const scene=new Scene();");
+        if (variant !== 'no-render') writeFileSync(path.join(output, 'render.mjs'), '// original authored render entry');
+        if (variant === 'legacy') {
+          writeFileSync(path.join(output, 'film.json'), JSON.stringify({ width: 1280, height: 720, duration: 0.2, hasAudio: true }));
+          writeFileSync(path.join(output, 'validation.json'), '{}');
+        }
+        // A finished render follows its authored source, as in real production.
+        copyFileSync(source, path.join(output, 'final.mp4'));
+        const renderedAt = Date.now() / 1000 + 1;
+        utimesSync(path.join(output, 'final.mp4'), renderedAt, renderedAt);
+        if (variant === 'wrong-size') task.width = 1920;
+        const events = controller.sessions.get(task.sessionId).events = terminalEvents('completed', true);
         const status = await studio.status(task.id);
         assert.equal(status.status, expected, status.message);
         const result = studio.publicTask(status).result;
-        if (expected === 'completed') assert.deepEqual(result, {
-          videoUrl: `/agent-motion/files/${task.id}/work/${task.id}/final.mp4`, previewUrl: `/agent-motion/files/${task.id}/work/${task.id}/index.html`,
-          projectUrl: `/agent-motion/files/${task.id}/work/${task.id}/project.zip`,
-        });
+        if (expected === 'completed') {
+          assert.equal(status.stage, '已导出，待视觉检查');
+          assert.match(status.message, /没有成功读取图片的记录/);
+          assert.equal(saved(task).stage, status.stage);
+          assert.deepEqual(result, {
+            videoUrl: `/agent-motion/files/${task.id}/work/${task.id}/final.mp4`, previewUrl: `/agent-motion/files/${task.id}/work/${task.id}/index.html`,
+            projectUrl: `/agent-motion/files/${task.id}/work/${task.id}/project.zip`,
+          });
+          assert.ok(existsSync(path.join(output, 'project.zip')), 'Project result must exist before completion');
+          if (variant === 'free') {
+            for (const [attempt, isError, type] of [[0, true, 'image'], [1, false, 'text'], [2, false, 'image']]) {
+              const seq = 4 + attempt * 4, callId = `image-call-${attempt}`;
+              events.push({ seq, type: 'turn/start', data: {} },
+                { seq: seq + 1, type: 'tool/call', data: { name: 'read_image', callId, arguments: JSON.stringify({ file_path: `${output}/_preview/contact-sheet.png` }) } },
+                { seq: seq + 2, type: 'tool/result', data: { message: { toolCallId: callId, isError, content: [{ type }] } } },
+                { seq: seq + 3, type: 'turn/end', data: { reason: { kind: 'completed' } } });
+              const reviewed = await studio.status(task.id), imageRead = !isError && type === 'image';
+              assert.equal(reviewed.status, 'completed');
+              assert.equal(reviewed.stage, imageRead ? '已导出，待视听确认' : '已导出，待视觉检查');
+              assert.match(reviewed.message, imageRead ? /不代表整片视听验收完成/ : /没有成功读取图片的记录/);
+              assert.equal(saved(task).stage, reviewed.stage);
+              assert.ok(studio.publicTask(reviewed).result, 'Unreviewed output stays playable without restarting paid work');
+            }
+          }
+          if (variant === 'legacy') {
+            status.stage = '制作完成';
+            const historical = studio.publicTask(status);
+            assert.equal(historical.stage, '已导出，待视听确认');
+            assert.match(historical.message, /历史任务已导出/);
+            assert.ok(historical.result);
+            assert.equal(status.stage, '制作完成', 'Presenting an older task must not rewrite its record');
+          }
+        }
         else assert.equal(result, undefined);
       }
+      await t.test('nested project revisions retain render approvals and completed sessions can resume', async () => {
+        const task = await ready({ ...input, width: 1280, height: 720 }); await execute(task);
+        copyFileSync(voice, path.join(studio.workspace, 'inputs/studio', task.id, 'voice.wav'));
+        const output = path.join(studio.workspace, 'work', task.id);
+        mkdirSync(path.join(output, 'modules'), { recursive: true });
+        writeFileSync(path.join(output, 'index.html'), '<!doctype html><script type="module" src="./modules/custom.js"></script>');
+        writeFileSync(path.join(output, 'render.mjs'), '// original author render entry');
+        const module = path.join(output, 'modules', 'custom.js');
+        writeFileSync(module, "import {Scene} from 'three'; export const scene = new Scene();");
+        const timestamp = Date.now() / 1000;
+        for (const file of ['index.html', 'render.mjs', 'modules/custom.js']) utimesSync(path.join(output, file), timestamp - 60, timestamp - 60);
+        copyFileSync(clip, path.join(output, 'final.mp4'));
+        utimesSync(path.join(output, 'final.mp4'), timestamp - 30, timestamp - 30);
+        // This is the original incident: an older valid render followed by a nested scene revision.
+        writeFileSync(module, "import {Scene} from 'three'; export const scene = new Scene(); scene.name = 'revised';");
+        utimesSync(module, timestamp - 10, timestamp - 10);
+        for (const file of ['_preview/contact-sheet.png', 'preview-short.mp4', 'contact-sheet.png', 'frame-0001.png', 'frames/frame.png', 'cache/run.json', '.scratch/latest.js', 'temp/run.json', 'final.before-revision.mp4', 'review.md', 'validation.json']) {
+          const target = path.join(output, file); mkdirSync(path.dirname(target), { recursive: true }); writeFileSync(target, 'generated QA artifact');
+          utimesSync(target, timestamp + 30, timestamp + 30);
+        }
+        const events = controller.sessions.get(task.sessionId).events = terminalEvents('completed', true);
+        const stale = await studio.status(task.id);
+        assert.equal(stale.status, 'running');
+        assert.match(stale.message, /成片尚未更新/);
+        assert.equal(studio.publicTask(stale).result, undefined);
+        assert.equal(existsSync(path.join(output, 'project.zip')), false);
+
+        const approveRender = async seq => {
+          const callId = randomUUID();
+          events.push({ seq, type: 'turn/start', data: {} }, { seq: seq + 1, type: 'tool/call', data: { name: 'pwsh', callId, arguments: JSON.stringify({ command: `node work/${task.id}/render.mjs` }) } });
+          const abort = new AbortController();
+          const outcome = studio.requestApproval({ agent: { id: task.sessionId }, callId, toolName: 'pwsh', signal: abort.signal }, async () => assert.fail('Active revision approval must stay in the studio'));
+          try {
+            const deadline = Date.now() + 5000;
+            while (!studio.publicTask(task).pendingApprovals.length) {
+              assert.ok(Date.now() < deadline, 'Revision approval did not reach the studio');
+              await new Promise(resolve => setTimeout(resolve, 1));
+            }
+            assert.equal(task.status, 'running');
+            assert.equal(studio.publicTask(task).result, undefined);
+            const approval = studio.publicTask(task).pendingApprovals[0];
+            assert.match(approval.details, /render\.mjs/);
+            await studio.approve(task.id, { approvalId: approval.id, decision: 'allowed-once' });
+            assert.equal(await outcome, 'allowed-once');
+          } finally { abort.abort(); await outcome; }
+        };
+        try {
+          await approveRender(4);
+          copyFileSync(clip, path.join(output, 'final.mp4'));
+          utimesSync(path.join(output, 'final.mp4'), timestamp, timestamp);
+          events.push({ seq: 6, type: 'turn/end', data: { reason: { kind: 'completed' } } });
+          const completed = await studio.status(task.id);
+          assert.equal(completed.status, 'completed', completed.message);
+          assert.ok(studio.publicTask(completed).result);
+          assert.ok(existsSync(path.join(output, 'project.zip')));
+          let delegated = 0;
+          assert.equal(await studio.requestApproval({ agent: { id: task.sessionId }, callId: randomUUID(), toolName: 'pwsh' }, async () => { delegated++; return 'unavailable'; }), 'unavailable');
+          assert.equal(delegated, 1, 'An inactive terminal task must not consume host approvals');
+          await approveRender(7);
+          assert.equal(saved(task).status, 'running');
+        } finally { await studio.cancel(task.id); }
+        events.push({ seq: 9, type: 'turn/start', data: {} });
+        assert.equal((await studio.status(task.id)).status, 'cancelled', 'Explicitly stopped tasks must not resume on a new turn');
+      });
     } finally {
       if (previousProbe === undefined) delete process.env.FFPROBE_PATH;
       else process.env.FFPROBE_PATH = previousProbe;
@@ -724,9 +873,16 @@ test('Web studio follows real Harness task, upload, cancellation and file contra
     writeFileSync(path.join(output, 'index.html'), 'own preview');
     writeFileSync(path.join(otherOutput, 'index.html'), 'another task preview');
     assert.equal(await studio.file(task.id, `work/${task.id}/index.html`), realpathSync(path.join(output, 'index.html')));
+    for (const relative of [`work/${task.id}/modules/main.mjs`, `work/${task.id}/assets/data.json`, `work/${task.id}/assets/scene.css`,
+      'scripts/custom-framing.mjs', 'node_modules/three/examples/jsm/controls/OrbitControls.js', 'node_modules/three/src/Three.js',
+      `inputs/studio/${task.id}/voiced-avatar.mp4`, `inputs/studio/${task.id}/alignment/source.srt`]) {
+      const file = path.join(studio.workspace, relative); mkdirSync(path.dirname(file), { recursive: true }); writeFileSync(file, 'local dependency');
+      assert.equal(await studio.file(task.id, relative), realpathSync(file));
+    }
     await assert.rejects(studio.file(task.id, `work/${task.id}/project.zip`), hasStatus(409));
     for (const relative of [`work/${other.id}/index.html`, `work/${task.id}/.secret`, `work/${task.id}/../index.html`,
-      `work/${task.id}/frames/frame.png`, 'inputs/studio/source.mp4', 'node_modules/package.json', `work\\${task.id}\\index.html`]) {
+      `work/${task.id}/frames/frame.png`, `work/${task.id}/credentials.json`, `inputs/studio/${other.id}/voice.wav`, `inputs/studio/${task.id}/avatar-task.json`,
+      `inputs/studio/${task.id}/rules/revision.json`, 'inputs/studio/source.mp4', 'node_modules/package.json', `work\\${task.id}\\index.html`]) {
       await assert.rejects(studio.file(task.id, relative), hasStatus(403));
     }
     await assert.rejects(studio.file('invalid-id', `work/${task.id}/index.html`), hasStatus(404));
@@ -736,6 +892,9 @@ test('Web studio follows real Harness task, upload, cancellation and file contra
       symlinkSync(target, link, process.platform === 'win32' ? 'junction' : 'dir'); links.push(link);
       await assert.rejects(studio.file(task.id, `work/${task.id}/${name}/index.html`), hasStatus(403));
     }
+    const privateDirectory = path.join(output, '.private'); mkdirSync(privateDirectory); writeFileSync(path.join(privateDirectory, 'index.html'), 'hidden');
+    const privateLink = path.join(output, 'fake-assets'); symlinkSync(privateDirectory, privateLink, process.platform === 'win32' ? 'junction' : 'dir'); links.push(privateLink);
+    await assert.rejects(studio.file(task.id, `work/${task.id}/fake-assets/index.html`), hasStatus(403));
     assert.equal(readFileSync(path.join(outside, 'index.html'), 'utf8'), 'outside workspace');
     await studio.cancel(task.id); await studio.cancel(other.id);
   });

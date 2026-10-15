@@ -5,7 +5,7 @@ const storageKey = 'agent-motion-task-id';
 const uncertainKey = 'agent-motion-execute-uncertain';
 const terminal = new Set(['completed', 'failed', 'cancelled']);
 const resolvedApprovals = new Set();
-const statusNames = { 'awaiting-upload': '等待上传', ready: '素材就绪', queued: '等待制作', running: '正在制作', stopping: '正在停止', completed: '制作完成', failed: '制作失败', cancelled: '已停止' };
+const statusNames = { 'awaiting-upload': '等待上传', ready: '素材就绪', queued: '等待制作', running: '正在制作', stopping: '正在停止', completed: '已导出', failed: '制作失败', cancelled: '已停止' };
 let videoFile, sourceUrl, task, polling, upload, operation = 0, busy = false, approvalBusy = false, retryAction, restoredFormId, uncertainId;
 let config = { ready: false, message: '正在检查制作服务。', defaultVoice: '' }, configLoading = true;
 try { uncertainId = localStorage.getItem(uncertainKey); } catch {}
@@ -110,7 +110,7 @@ function render() {
   $('cancelButton').disabled = approvalBusy;
   $('statusBadge').textContent = waitingApproval ? '等待操作确认' : statusNames[status] || (task ? '恢复任务中' : '等待素材');
   $('statusBadge').dataset.status = status || '';
-  $('taskHeading').textContent = waitingApproval ? '等待操作确认。' : status === 'completed' ? '你的成片，已准备就绪。' : status === 'failed' ? '制作未完成，可查看任务记录。' : status === 'cancelled' ? '制作已停止。' : active ? '让制作流程接管。' : '准备好，就开始。';
+  $('taskHeading').textContent = waitingApproval ? '等待操作确认。' : status === 'completed' ? '视频已导出，请确认视听效果。' : status === 'failed' ? '制作未完成，可查看任务记录。' : status === 'cancelled' ? '制作已停止。' : active ? '让制作流程接管。' : '准备好，就开始。';
   $('stageMessage').textContent = task ? [task.stage, task.message].filter(value => typeof value === 'string' && value).join(' · ') || statusNames[status] || '正在恢复任务状态…' : '制作任务会在这里显示实际进度。';
   $('workingProgress').hidden = waitingApproval || !['queued', 'running'].includes(status);
   $('workingProgress').querySelector('p').textContent = status === 'queued' ? '任务已进入队列，等待制作开始。' : '后台正在处理，页面可保持打开。';

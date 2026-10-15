@@ -11,12 +11,14 @@ test('static server: Unicode paths, media ranges, HEAD, malformed URLs and bound
   await mkdir(root);
   await writeFile(path.join(root, '片 段.mp4'), '0123456789');
   await writeFile(path.join(root, '.env'), 'secret');
+  await writeFile(path.join(root, 'diagram.SVG'), '<svg xmlns="http://www.w3.org/2000/svg"/>');
   await mkdir(path.join(root, 'film'));
   await writeFile(path.join(root, 'film/index.html'), '<title>Film</title>');
   await writeFile(path.join(folder, 'outside.txt'), 'private');
   const { server, url } = await startServer({ root, port: 0 });
   try {
     const index = await fetch(url + '/film/'); assert.equal(index.status, 200); assert.match(await index.text(), /Film/);
+    const image = await fetch(url + '/diagram.SVG'); assert.equal(image.status, 200); assert.equal(image.headers.get('content-type'), 'image/svg+xml');
     assert.equal((await fetch(url + '/favicon.ico')).status, 204);
     assert.equal((await fetch(url + '/missing-asset.png')).status, 404);
     const file = url + '/' + encodeURIComponent('片 段.mp4');

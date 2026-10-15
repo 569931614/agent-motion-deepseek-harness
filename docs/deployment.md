@@ -1,6 +1,6 @@
 # 部署说明
 
-本说明部署 Agent Motion 1.6.0 的 TypeScript Cordis 插件、Web 制作页及独立视频制作工程。页面流程为人物 MP4 与文案 → 默认复刻视频音色（也可使用已有音色 ID）→ CosyVoice-v3.5-plus 配音 → MuseTalk 数字人口播 → 原 Agent Motion Skill 制作。宿主适配基线为 `@deepseek-ai/dsh@0.2.0-rc.2`；插件入口是 `deepseek/lib/index.js`，源文件位于 `deepseek/src/`。
+本说明部署 Agent Motion 1.6.0 的 TypeScript Cordis 插件、Web 制作页及独立视频制作工程。页面流程为人物 MP4 与文案 → 默认复刻视频音色（也可使用已有音色 ID）→ CosyVoice-v3.5-plus 配音 → MuseTalk 数字人口播 → 合入新配音 → 可信字幕对齐 → 原版 SRT 全文分析与 Motion Craft 制作。默认制作自建场景及渲染入口，三种风格是审美参考，不强制模板 CLI。宿主适配基线为 `@deepseek-ai/dsh@0.2.0-rc.2`；插件入口是 `deepseek/lib/index.js`，源文件位于 `deepseek/src/`。
 
 ## 准备与构建
 
@@ -35,6 +35,8 @@ npx @deepseek-ai/dsh@0.2.0-rc.2 web
 Windows 可将包路径替换为 `C:/packages/agent-motion-1.6.0.tgz`。配置输出应出现 `# == agent-motion`、`id: agent-motion` 和 `name: agent-motion`，profile bundle 列表应保留官方 base、web-app 及 agent-motion。Web 默认监听 `http://127.0.0.1:3080`；模型凭据和路由继续在 Harness 配置。安装或替换包后重启既有 Web 进程。
 
 Cordis 插件会在现有 Harness Web 服务上注册 `/agent-motion/` 制作页及侧栏“动效工坊”。先通过 Harness 首页登录；页面、任务接口、工程下载和预览文件复用宿主 token/cookie 认证。页面接收 MP4、文案、音色来源、风格和尺寸；默认从视频声音复刻音色，也可输入模型绑定的已有 ID。生成配音与数字人后执行实际 `agent-motion` Skill 会话，回显中间素材、MP4、可编辑工程 ZIP 与 HTML 预览。操作见 [使用手册](user-manual.md#页面快速开始)。
+
+跨站打开启动链接后持续 401 时，使用同一地址的 `/agent-motion/login` 并按需填写本次启动链接。仅此登录页及其脚本公开；它在同站请求原 Harness 认证并检查 Cookie，不存储口令或放宽工坊、API 和下载权限。启动口令随进程重启而改变，登录 Cookie 绑定原主机名和端口；不要混用 `localhost` 与 `127.0.0.1`。
 
 已构建的本地 checkout 可从其根目录安装：
 
@@ -114,7 +116,7 @@ node scripts/bootstrap.mjs
 node scripts/doctor.mjs --matting --json
 ```
 
-初始化会复制已编译生产 CLI、`scene.mjs`、全部模板、原始制作 Skills、脚本和字体，创建 `work/`，并生成匹配的生产锁文件。工程不需要 Harness 或 TypeScript 开发依赖，也不运行 `build`/`prepack`。已有目录和符号链接会被拒绝；部分失败工程保留供诊断，修复后换新目录，勿覆盖素材。
+初始化会复制原始制作 Skills、脚本、字体、风格参考及可选模板 CLI，创建 `work/`，并生成匹配的生产锁文件。默认流程按原版规则自建场景，不运行模板 CLI 或直接使用复制的模板 `scene.mjs`。工程不需要 Harness 或 TypeScript 开发依赖，也不运行 `build`/`prepack`。已有目录和符号链接会被拒绝；部分失败工程保留供诊断，修复后换新目录，勿覆盖素材。
 
 制作页把 `agent-motion/production/.agents/skills/` 注册为可编辑 Skill 来源，优先于插件包里的同名 Skill，并监视文件更新。制作要求、排版、字体和效果在其中的 `motion-craft`、`srt-reference-to-three` 及引用资料中维护；编辑后新任务直接生效，无需重启。`agent-motion` 入口默认使用安装包版本，也可把完整入口目录复制到生产工程的同名目录后覆盖。升级插件不覆盖这些生产规则；要采用上游新规则时，请比较后手动合并。
 
@@ -122,7 +124,7 @@ node scripts/doctor.mjs --matting --json
 
 `bootstrap.mjs` 准备工程内 Node 依赖、隔离 Python、Chromium、FFmpeg/ffprobe 和 RVM 模型，再做环境与短片抠像检查。下载和缓存保存在 `.runtime/`、`.venv/`；模型、浏览器和运行环境不随 tarball 打包。首次安装需要联网，CPU 抠像不要求独立显卡，但速度取决于视频长度、分辨率和机器。
 
-制作页会准备插件安装目录外的专用制作工程。视频模式在媒体工具可用后提取声音并复刻音色，缺失时按上述行为自动准备；已有 ID 模式直接生成配音，后续由原 Skill 检查并安装制作环境。文案用于新配音和字幕，SRT 导入只取正文，时间按生成配音重新对齐。本地 CPU faster-whisper 首次使用下载识别模型。原声素材 CLI 仍可直接使用既有视频与 SRT，不调用音色复刻、配音或数字人服务。模型下载失败时保留素材和错误；上游收费提交不确定时先查现有记录，不以重试安装替代重新核对任务。
+制作页会准备插件安装目录外的专用制作工程。视频模式在媒体工具可用后提取声音并复刻音色，缺失时按上述行为自动准备；已有 ID 模式直接生成配音，后续由原 Skill 检查并安装制作环境。文案用于新配音和字幕，SRT 导入只取正文，时间按生成配音重新对齐。本地 CPU faster-whisper 首次使用下载识别模型。新数字人视频和对齐 SRT 直接交给原版全文分析与 `assets`、`composition`、`animation`、`sound`、`review` 阶段。原声素材工作流仍可直接使用既有视频与 SRT，不调用音色复刻、配音或数字人服务。模型下载失败时保留素材和错误；上游收费提交不确定时先查现有记录，不以重试安装替代重新核对任务。
 
 Linux 缺少 Chromium 系统库时，从制作工程根执行：
 
@@ -150,6 +152,6 @@ node scripts/setup.mjs --with-deps
 
 RVM 保留 GPL-3.0，FFmpeg 构建、Chromium、运行依赖及字体保留各自许可；项目授权不替换这些许可。分发安装环境或完整工程时保留相应许可证与声明，组合打包需另外核对适用条款。见 [项目许可](../LICENSE) 和 [第三方说明](../THIRD_PARTY_NOTICES.md)。
 
-制作页的工程下载接口会按需生成当前任务的 ZIP，保留 `work/<任务编号>/` 及所需人物层、素材、字体、Three.js、Playwright 代码和独立渲染脚本。新任务带上本次规则快照；不包含凭据、其他任务、逐帧 PNG、Python 环境或浏览器二进制。解压后 `node serve.mjs` 可在本机预览；重渲染需准备 FFmpeg/FFprobe 和 Chromium，可使用 PATH、`FFMPEG_PATH` / `FFPROBE_PATH` 及 `BROWSER_EXECUTABLE` / `BROWSER_CHANNEL` 指定。具体命令见 [页面工程 ZIP](user-manual.md#页面工程-zip)。导出与本地重渲染不再次提交云端配音或数字人任务。
+制作页的工程下载接口会按需生成当前任务的 ZIP，保留 `work/<任务编号>/` 的 MP4、HTML、可编辑源码、任务自有 `render.mjs`、实际制作输入及所需人物层、素材、字体、Three.js、Playwright 代码。不会把任务渲染入口替换成固定模板入口，不强制 `film.json` 或 `validation.json`。新任务带上本次规则快照；不包含凭据、其他任务、逐帧 PNG、Python 环境或浏览器二进制。解压后 `node serve.mjs` 可在本机预览；重渲染需准备 FFmpeg/FFprobe 和 Chromium，可使用 PATH、`FFMPEG_PATH` / `FFPROBE_PATH` 及 `BROWSER_EXECUTABLE` / `BROWSER_CHANNEL` 指定。具体命令见 [页面工程 ZIP](user-manual.md#页面工程-zip)。导出与本地重渲染不再次提交云端配音或数字人任务。
 
 原声素材 CLI 工程归档时仍须保存完整工程根及依赖、字体、素材和人物层；单独复制 `work/my-film/` 不足以重新渲染。迁移到另一平台时保留工程与锁文件，在目标机器重新准备平台运行环境。公司服务自身迁移还需备份生产工程、用户规则与 Harness 设置；单个任务 ZIP 不是服务器配置备份。
